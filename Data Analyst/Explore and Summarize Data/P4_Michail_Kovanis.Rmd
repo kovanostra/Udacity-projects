@@ -1,0 +1,862 @@
+---
+title: "P4 - Explore and summarize data"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+```
+
+## Methods
+
+#### Objective 
+
+In this project my objective was to find patterns in past or current loans that might be correlated with successful completion or default of a current loan. To this end I divided the loans into two groups, the "Completed"/"Defaulted" and the "Current", and I investigated these two groups separately. In used univariate analysis to get a better sense of the dataset and multivariate analysis, along with statistical tests when necessary, to uncover possible correlations. Finally, I focused my analysis, in most parts, on those individuals that I considered as more prone to default.
+
+#### Dataset
+
+I investigated the Loan Data from Prosper. As the description in the project page states this data set contains 113,937 loans with 81 variables on each loan, including loan amount, borrower rate (or interest rate), current loan status, borrower income, borrower employment status, borrower credit history, and the latest payment information.
+
+The main variables which I explored were:
+
+    1. LoanStatus
+    2. EmploymentStatus
+    3. CurrentDelinquencies
+    4. DelinquenciesLast7Years
+    5. AmountDelinquent
+    7. AvailableBankcardCredit
+    8. DebtToIncomeRatio
+    9. IncomeRange
+    10. StatedMonthlyIncome
+    11. LoanCurrentDaysDelinquent
+    12. LoanOriginalAmount
+    13. MonthlyLoanPayment
+  
+  
+```{r}
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(scales)
+
+loans <- read.csv('prosperLoanData.csv')
+```
+
+## Results
+
+#### Population characteristics
+
+The total population is 113,937 individuals
+
+```{r echo=TRUE}
+n <- length(loans$ListingKey)
+n
+```
+
+
+First I wanted to investigate the LoanStatus variable. For higher clarity of the bar plot, below I printed the four most frequent values:
+
+    1. Chargedoff
+    2. Completed
+    3. Current
+    4. Defaulted
+
+We see that current and completed loans consist the majority of the data.
+
+    
+```{r}
+summary(loans$LoanStatus)
+
+ggplot(aes(x = LoanStatus), 
+       data = subset(loans, LoanStatus ==
+                         c('Chargedoff', 'Completed', 'Current', 'Defaulted'))) +
+    geom_bar()
+
+```
+
+Here we can see that about 50% of the individuals are homeowners.
+
+```{r echo=TRUE}
+summary(loans$IsBorrowerHomeowner)
+```
+
+Here I plotted the employment status of the individuals. From the subsequent analysis I excluded those with employment status either empty or not available.
+
+```{r}
+summary(loans$EmploymentStatus)
+
+ggplot(aes(x = EmploymentStatus), 
+       data = loans) +
+    geom_histogram(stat="count")
+
+```
+
+Here we see the number of delinquencies for the individuals (current and total in 7 years). The majority of the population never had any delinquencies (about 67%), while about 79% of the population doesn't currently have any delinquencies.
+
+Since the majority in both cases is zero, we only show those that have or had at least one delinquency. Both plots are in the same scale for easier comparison.
+
+```{r echo=TRUE}
+summary(loans$CurrentDelinquencies)
+```
+
+```{r echo=TRUE}
+zero_current_delinquencies <- subset(loans$CurrentDelinquencies, 
+                                       loans$CurrentDelinquencies == 0)
+length(zero_current_delinquencies)
+```
+
+```{r}
+
+p1 <- ggplot(aes(x = CurrentDelinquencies), 
+       data = subset(loans, CurrentDelinquencies > 0)) +
+    scale_x_continuous(limits = c(0,100)) +
+    scale_y_continuous(limits = c(0,12000)) +
+    geom_histogram(stat="count")
+```
+
+```{r echo=TRUE}
+summary(loans$DelinquenciesLast7Years)
+```
+
+```{r echo=TRUE}
+zero_total_delinquencies <- subset(loans$DelinquenciesLast7Years, 
+                                       loans$DelinquenciesLast7Years == 0)
+length(zero_total_delinquencies)
+```
+
+```{r}
+
+p2 <- ggplot(aes(x = DelinquenciesLast7Years), 
+       data = subset(loans, DelinquenciesLast7Years > 0)) +
+    scale_x_continuous(limits = c(0,100)) +
+    scale_y_continuous(limits = c(0,12000)) +
+    geom_histogram(stat="count")
+
+grid.arrange(p1, p2)
+
+```
+
+
+There are a lot of individuals with a delinquent amount minor or equal to zero. Here I wanted to see the distribution for those that have delinquent amounts higher than 10,000 dollars (2,584 individuals) and thus they might be more prone to default. Below we also see a summary of the results.
+
+```{r echo=TRUE}
+summary(loans$AmountDelinquent)
+```
+
+```{r echo=TRUE}
+high_delinquency <- 10000
+high_delinquency_individuals <- subset(loans$AmountDelinquent, 
+                                       loans$AmountDelinquent > high_delinquency)
+length(high_delinquency_individuals)
+summary(high_delinquency_individuals)
+```
+
+```{r}
+ggplot(aes(x = AmountDelinquent), 
+       data = subset(loans, AmountDelinquent > 10000)) +
+    geom_histogram(bins = 300)
+```
+
+
+Here I show the available bank card credit. My interest is to see beter those with the lowest credit, so I plotted only those with less than 50,000.
+
+```{r}
+summary(loans$AvailableBankcardCredit)
+
+ggplot(aes(x = AvailableBankcardCredit), 
+       data = subset(loans, AvailableBankcardCredit < 50000)) +
+    geom_histogram(binwidth = 1000)
+
+```
+
+Here I wanted to look more into those with the highest exposure (debt 50% or higher than their income). We see that there is an unexpected peak at 10.0. That point either is an error or it refers to all those that have debt to income ratio higher than 10.0.
+
+```{r}
+summary(loans$DebtToIncomeRatio)
+
+ggplot(aes(x = DebtToIncomeRatio), 
+       data = subset(loans, DebtToIncomeRatio > 0.5)) +
+    geom_histogram(bins = 1000)
+
+```
+
+
+The income range of the individuals.
+
+```{r}
+loans <- transform(loans, 
+                   IncomeRange = 
+                     factor(IncomeRange,
+                            levels = c("$0",
+                                       "$1-24,999",
+                                       "$25,000-49,999",
+                                       "$50,000-74,999",
+                                       "$75,000-99,999",
+                                       "$100,000+",
+                                       "Not employed",
+                                       "Not displayed"),
+                            ordered = TRUE))
+summary(loans$IncomeRange)
+
+ggplot(aes(x = IncomeRange), 
+       data = loans) +
+    geom_histogram(stat="count")
+
+```
+
+Again I wanted to look more in detail on those with less income. For instance, those with yearly income less than 50,000. Intrestignly there is a peak in zero. These people are eiher not reporting their income correctly or they are funded from someone else.
+
+```{r}
+summary(loans$StatedMonthlyIncome)
+
+ggplot(aes(x = StatedMonthlyIncome), 
+       data = subset(loans, StatedMonthlyIncome < 50000/12)) +
+    geom_histogram()
+
+```
+
+Loan current days delinquent (more than 0 days).
+
+```{r}
+summary(loans$LoanCurrentDaysDelinquent)
+
+ggplot(aes(x = LoanCurrentDaysDelinquent), 
+       data = subset(loans, LoanCurrentDaysDelinquent > 0)) +
+    geom_histogram()
+
+```
+
+Loan original amount. The peaks in the histogram are due to the fact that people tend to loan well rounded amounts.
+
+```{r}
+summary(loans$LoanOriginalAmount)
+
+ggplot(aes(x = LoanOriginalAmount), 
+       data = loans) +
+    geom_histogram(bins = 100)
+```
+
+Monthly loan payment (greater than 0).
+
+```{r}
+summary(loans$MonthlyLoanPayment)
+
+ggplot(aes(x = MonthlyLoanPayment), 
+       data = subset(loans, MonthlyLoanPayment > 0)) +
+    geom_histogram(bins = 100)
+
+```
+
+#### Simple trends
+
+I explored the differences in the debt to income ratio of those with completed and defaulted loans. Since the original plot is very skewed, I made a square root transformation on the x axis. From the plot alone we can see that those with defaulted loans tended to have a higher debt to income ratio. However, in order to be sure I performed a t-test in the two subsets (excluding those with zero ratio). The p-value of the test was << 0.001 and thus the difference observed is statistically significant.
+
+```{r}
+ggplot(aes(DebtToIncomeRatio, color = LoanStatus),
+       data = subset(loans, (LoanStatus == "Completed" |
+                         LoanStatus == "Defaulted") &
+                         DebtToIncomeRatio != 0 )) +
+    scale_x_continuous(trans = sqrt_trans()) +
+    geom_density()
+```
+
+```{r}
+loans.loan_status <- loans %>%
+    filter(!is.na(DebtToIncomeRatio) &
+               DebtToIncomeRatio > 0 &
+               (LoanStatus == "Completed" | LoanStatus == "Defaulted")) %>%
+    group_by(DebtToIncomeRatio, LoanStatus, ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(DebtToIncomeRatio)
+
+loans.loan_status_com <- subset(loans.loan_status, 
+                                 LoanStatus == "Completed")
+loans.loan_status_def <- subset(loans.loan_status, 
+                                 LoanStatus == "Defaulted")
+
+t.test(loans.loan_status_com$DebtToIncomeRatio, 
+       loans.loan_status_def$DebtToIncomeRatio)
+```
+
+Previously I investigated the complete range. Now I want to zoom in and investigate in the same way two ranges of debt to income ratio; (0, 0.5] and (0.5, 10].
+
+I start with (0, 0.5]. The p-value for this subset is again << 0.001 and thus the difference observed in the plot is statistically significant.
+
+```{r}
+ggplot(aes(DebtToIncomeRatio, color = LoanStatus),
+       data = subset(loans, (LoanStatus == "Completed" |
+                         LoanStatus == "Defaulted") &
+                         (DebtToIncomeRatio > 0.0 &
+                              DebtToIncomeRatio <= 0.5))) +
+    scale_x_continuous(trans = sqrt_trans()) +
+    geom_density()
+```
+
+```{r}
+loans.loan_status <- loans %>%
+    filter(!is.na(DebtToIncomeRatio) &
+               (DebtToIncomeRatio > 0.0 &
+                DebtToIncomeRatio <= 0.5) &
+               (LoanStatus == "Completed" | LoanStatus == "Defaulted")) %>%
+    group_by(DebtToIncomeRatio, LoanStatus, ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(DebtToIncomeRatio)
+
+loans.loan_status_com <- subset(loans.loan_status, 
+                                 LoanStatus == "Completed")
+loans.loan_status_def <- subset(loans.loan_status, 
+                                 LoanStatus == "Defaulted")
+
+t.test(loans.loan_status_com$DebtToIncomeRatio, 
+       loans.loan_status_def$DebtToIncomeRatio)
+```
+
+Here I explored the second range; (0.5, 10]. Running the statistical test we see that the p-value is >> 0.05, and thus those with debt to income ratio > 0.5 were not more likely to default or not.
+
+```{r}
+ggplot(aes(DebtToIncomeRatio, color = LoanStatus),
+       data = subset(loans, (LoanStatus == "Completed" |
+                         LoanStatus == "Defaulted") &
+                         (DebtToIncomeRatio > 0.5 &
+                              DebtToIncomeRatio <= 10))) +
+    scale_x_continuous(trans = sqrt_trans()) +
+    geom_density()
+```
+
+```{r}
+loans.loan_status <- loans %>%
+    filter(!is.na(DebtToIncomeRatio) &
+               (DebtToIncomeRatio > 0.5 &
+                DebtToIncomeRatio <= 10) &
+               (LoanStatus == "Completed" | LoanStatus == "Defaulted")) %>%
+    group_by(DebtToIncomeRatio, LoanStatus, ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(DebtToIncomeRatio)
+
+loans.loan_status_com <- subset(loans.loan_status, 
+                                 LoanStatus == "Completed")
+loans.loan_status_def <- subset(loans.loan_status, 
+                                 LoanStatus == "Defaulted")
+
+t.test(loans.loan_status_com$DebtToIncomeRatio, 
+       loans.loan_status_def$DebtToIncomeRatio)
+```
+
+#### Finished loans
+
+In this section, I explored the relationship of the "Completed" and "Defaulted" loans, with their respective loantakers' employment status and other parameters. I analyzed those with loan status completed or defaulted to see whether I could find patterns that would allow me to predict what will happen with those still repaying their loans.
+
+First, I investigated the total delinquencies for the last 7 years. I excluded from the analysis all individuals with zero delinquencies. We can see that in most of the cases the median values for both completed and defaulted loans are identical. Only in the "Not employed" category the median delinquencies for the defaulted seem to differ a lot from the completed. In order to evaluate whether this difference is significant I ran a t-test. The resulting p-value is 0.56, thus I failed to reject the null hypothesis.
+
+
+```{r}
+ggplot(aes(x = EmploymentStatus, y = DelinquenciesLast7Years, 
+           color = LoanStatus), 
+       data = subset(loans, 
+                     DelinquenciesLast7Years != 0 &
+                     (LoanStatus == "Completed" |
+                     LoanStatus == "Defaulted") &
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    geom_point(alpha = 0.2, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+```
+  
+```{r}
+loans.not_employed <- loans %>%
+    filter(EmploymentStatus == "Not employed", 
+           DelinquenciesLast7Years != 0,
+           (LoanStatus == "Completed" | LoanStatus == "Defaulted")) %>%
+    group_by(DelinquenciesLast7Years, LoanStatus, ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(DelinquenciesLast7Years)
+
+loans.not_employed_com <- subset(loans.not_employed, 
+                                 LoanStatus == "Completed")
+loans.not_employed_def <- subset(loans.not_employed, 
+                                 LoanStatus == "Defaulted")
+
+t.test(loans.not_employed_com$DelinquenciesLast7Years, 
+       loans.not_employed_def$DelinquenciesLast7Years)
+```
+
+Next, I looked at the original amount of loaned money. In the same way, medians apeared to be very similar apart from the "Self-employed" category. For that category I performed again a t-test to see whether the difference was statistically significant. The resulting p-value was << 0.001, thus the difference is statistically significant. So self employed individuals who defaulted, took bigger loans than those who didn't default.
+
+```{r}
+ggplot(aes(x = EmploymentStatus, y = LoanOriginalAmount, color = LoanStatus), 
+       data = subset(loans, 
+                     (LoanStatus == "Completed" |
+                     LoanStatus == "Defaulted") &
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    geom_point(alpha = 0.2, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+
+```{r}
+loans.self_employed <- loans %>%
+    filter(EmploymentStatus == "Self-employed", 
+           (LoanStatus == "Completed" | LoanStatus == "Defaulted")) %>%
+    group_by(LoanOriginalAmount, LoanStatus, ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(LoanOriginalAmount)
+
+loans.self_employed_com <- subset(loans.self_employed, 
+                                  LoanStatus == "Completed")
+loans.self_employed_def <- subset(loans.self_employed, 
+                                  LoanStatus == "Defaulted")
+
+t.test(loans.self_employed_com$LoanOriginalAmount, 
+       loans.self_employed_def$LoanOriginalAmount)
+```
+
+In this plot I show the stated monthly income of those with less than 50,000 dollars per year. Interestigly people with full-time employment reported having zero monthly income. This is for sure some kind of error either in the way the data was stored or reported. In this plot all the median values are very similar to each other. 
+
+```{r}
+ggplot(aes(x = EmploymentStatus, y = StatedMonthlyIncome, color = LoanStatus), 
+       data = subset(loans, 
+                     (LoanStatus == "Completed" |
+                     LoanStatus == "Defaulted") &
+                     StatedMonthlyIncome < 50000 &    
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    geom_point(alpha = 0.2, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+  
+Here I explored the past delinquencies along with whether the individual was a homeowner or not. I wanted to see whether possible mortgages could play any role in the likelihood to default. From the box plots we can see that both median values and variances are very simmilar for all groups. I excluded from the analysis those with zero delinquencies.
+
+```{r}
+ggplot(aes(x = IsBorrowerHomeowner, y = DelinquenciesLast7Years, 
+           color = LoanStatus), 
+       data = subset(loans, 
+                     DelinquenciesLast7Years != 0 &
+                     (LoanStatus == "Completed" |
+                     LoanStatus == "Defaulted") )) +
+    geom_point(alpha = 0.2, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+
+  
+In this plot I investigated the on time prosper payments for each employment status. Again everything seems to be very similar apart from the "Not employed". However the p-value is about 0.77 and thus this variable does not show any differences as well.
+  
+```{r}
+ggplot(aes(x = EmploymentStatus, y = OnTimeProsperPayments, 
+           color = LoanStatus), 
+       data = subset(loans, 
+                     (LoanStatus == "Completed" |
+                     LoanStatus == "Defaulted") &    
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    geom_point(alpha = 0.4, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+```
+
+```{r}
+loans.not_employed <- loans %>%
+    filter(EmploymentStatus == "Not employed", 
+           (LoanStatus == "Completed" | LoanStatus == "Defaulted")) %>%
+    group_by(OnTimeProsperPayments, LoanStatus, ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(OnTimeProsperPayments)
+
+loans.not_employed_com <- subset(loans.not_employed, 
+                                 LoanStatus == "Completed")
+loans.not_employed_def <- subset(loans.not_employed, 
+                                 LoanStatus == "Defaulted")
+
+t.test(loans.not_employed_com$OnTimeProsperPayments, 
+       loans.not_employed_def$OnTimeProsperPayments)
+```
+  
+The majority of loans are 100% funded and thus I was interested to investigate those not fully funded. The "Not employed" category has clear differences between completed and defaulted loans, however the datapoints are too few to draw any statistical conclusion. For the rest of the categories either there is not a big difference between "Completed" and "Defaulted" or the "Defaulted" category is completely absent.
+  
+```{r}
+ggplot(aes(x = EmploymentStatus, y = PercentFunded, color = LoanStatus), 
+       data = subset(loans, 
+                     PercentFunded != 1 &
+                     (LoanStatus == "Completed" |
+                     LoanStatus == "Defaulted") &    
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    geom_point(alpha = 0.4, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+
+In terms of the number of investors in each loan, again the results are pretty similar for all categories apart from the "Self-employed". The p-value is << 0.001 and thus we conclude that self employed with more investors were more likely to default than the rest of the self-employed.
+  
+```{r}
+ggplot(aes(x = EmploymentStatus, y = Investors, color = LoanStatus), 
+       data = subset(loans, 
+                     (LoanStatus == "Completed" |
+                     LoanStatus == "Defaulted") &    
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    geom_point(alpha = 0.4, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+
+```{r}
+loans.self_employed <- loans %>%
+    filter(EmploymentStatus == "Self-employed", 
+           (LoanStatus == "Completed" | LoanStatus == "Defaulted")) %>%
+    group_by(Investors, LoanStatus, ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(Investors)
+
+loans.self_employed_com <- subset(loans.self_employed, 
+                                  LoanStatus == "Completed")
+loans.self_employed_def <- subset(loans.self_employed, 
+                                  LoanStatus == "Defaulted")
+
+t.test(loans.self_employed_com$Investors, 
+       loans.self_employed_def$Investors)
+```
+
+#### Current loans
+
+Here I explored the relationship of the debt to income ratio of those that currently have an active loan, with their employment status and other parameters. I divided all individuals into two groups; those with low (<= 0.5) and those with high debt to income ratio (> 0.5). I created a bucket to put these individuals into and plotted in the same style as in the previous section. In the following plots I didn't include NA and zero values (when applicable).
+
+```{r Create bucket}
+loans$DebtToIncomeRatio.bucket <- cut(loans$DebtToIncomeRatio, 
+                                      breaks = c(0.0, 0.5, 10.0))
+```
+
+In this first plot I investigated whether the current delinquencies can reveal any pattern for those currently holding a loan. The plot shows only until 15 delinquencies but all higher than zero were included in the analysis. Making a statistical t-test to all the the individuals of different employment status we find no differences in those "Employed" and "Full-time" (p > 0.5). The "Other" have a statistically significant difference (p << 0.001) and the "Retired" a significant difference of 0.01 < p < 0.05. Finally, for the "Part-time" there are not enough observations and the "Self-employed" are only in low debt to income ratio.
+
+```{r Current delinquencies}
+ ggplot(aes(x = EmploymentStatus, y = CurrentDelinquencies, 
+                  color = DebtToIncomeRatio.bucket), 
+       data = subset(loans, LoanStatus == "Current" & 
+                     !is.na(DebtToIncomeRatio.bucket) &
+                     CurrentDelinquencies != 0 &
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    scale_y_continuous(limits = c(0,15)) +
+    geom_point(alpha = 0.4, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+
+(Example: t-test for the "Retired")
+
+```{r}
+current_loans.employment <- loans %>%
+    filter(LoanStatus == "Current" & 
+         !is.na(DebtToIncomeRatio.bucket) &
+         CurrentDelinquencies != 0 &
+         EmploymentStatus != "Not available" &
+         EmploymentStatus != "") %>%
+    group_by(CurrentDelinquencies, 
+             EmploymentStatus, 
+             DebtToIncomeRatio.bucket,
+             ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(CurrentDelinquencies)
+
+status_to_check = "Retired"
+current_loans.employment_low <- subset(current_loans.employment, 
+                                  EmploymentStatus == status_to_check &
+                                  DebtToIncomeRatio.bucket == "(0,0.5]")
+current_loans.employment_high <- subset(current_loans.employment,
+                                  EmploymentStatus == status_to_check &
+                                  DebtToIncomeRatio.bucket == "(0.5,10]")
+
+t.test(current_loans.employment_low$CurrentDelinquencies, 
+       current_loans.employment_high$CurrentDelinquencies)
+```
+
+Here I explored those who had delinquent amounts higher than 1,000 dollars (plot shows until 100,000 dollars but I included all higher amounts in the analysis). Those "Employed" and "Other" were similar for both bucket groups, while those "Full-time" had a statistically significant difference (p << 0.001). All the rest do not have enough observations to perform a t-test.
+
+```{r Amount delinquent}
+ggplot(aes(x = EmploymentStatus, y = AmountDelinquent, 
+                  color = DebtToIncomeRatio.bucket), 
+       data = subset(loans, LoanStatus == "Current" & 
+                     !is.na(DebtToIncomeRatio.bucket) &
+                     AmountDelinquent > 1000 &
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    scale_y_continuous(limits = c(0,10000)) +
+    geom_point(alpha = 0.4, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+
+(Example: t-test for the "Full-time")
+
+```{r}
+current_loans.employment <- loans %>%
+    filter(LoanStatus == "Current" & 
+         !is.na(DebtToIncomeRatio.bucket) &
+         AmountDelinquent > 1000 &
+         EmploymentStatus != "Not available" &
+         EmploymentStatus != "") %>%
+    group_by(AmountDelinquent, 
+             EmploymentStatus, 
+             DebtToIncomeRatio.bucket,
+             ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(AmountDelinquent)
+
+status_to_check = "Full-time"
+current_loans.employment_low <- subset(current_loans.employment, 
+                                  EmploymentStatus == status_to_check &
+                                  DebtToIncomeRatio.bucket == "(0,0.5]")
+current_loans.employment_high <- subset(current_loans.employment,
+                                  EmploymentStatus == status_to_check &
+                                  DebtToIncomeRatio.bucket == "(0.5,10]")
+
+t.test(current_loans.employment_low$AmountDelinquent, 
+       current_loans.employment_high$AmountDelinquent)
+```
+
+Following the observation that self employed individuals with more investors were more likely to default on their loans, I wanted to explore more that group. I looked at those currently having an active loan to see whether higher number of investors was correlated with higher debt to income ratio. The p-value of the test was >> 0.05 and thus there was no correlation. However, the retired with low debt to income ratio have a higher number of investors, which is statistically significant (0.01 > p > 0.001).
+
+```{r Investors}
+ggplot(aes(x = EmploymentStatus, y = Investors, 
+                  color = (DebtToIncomeRatio.bucket)), 
+       data = subset(loans, LoanStatus == "Current" & 
+                     !is.na(DebtToIncomeRatio.bucket) &
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    scale_y_continuous(limits = c(0,500)) +
+    geom_point(alpha = 0.4, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+
+(Example: t-test for the "Retired")
+
+```{r}
+current_loans.employment <- loans %>%
+    filter(LoanStatus == "Current" & 
+         !is.na(DebtToIncomeRatio.bucket) &
+         EmploymentStatus != "Not available" &
+         EmploymentStatus != "") %>%
+    group_by(Investors, 
+             EmploymentStatus, 
+             DebtToIncomeRatio.bucket,
+             ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(Investors)
+
+status_to_check = "Retired"
+current_loans.employment_low <- subset(current_loans.employment, 
+                                  EmploymentStatus == status_to_check &
+                                  DebtToIncomeRatio.bucket == "(0,0.5]")
+current_loans.employment_high <- subset(current_loans.employment,
+                                  EmploymentStatus == status_to_check &
+                                  DebtToIncomeRatio.bucket == "(0.5,10]")
+
+t.test(current_loans.employment_low$Investors, 
+       current_loans.employment_high$Investors)
+```
+
+Even though there was no correlation between the number of investors and the debt to income ratio in the self employed category, I wanted to investigate whether there were correlations with the income range instead. In the next plot I excluded the "Not employed", the "Part-time" and the "Retired" because I wanted to focus on the rest of the categories which have more data. Below I printed how the income range is correlated with the number of investors per employment status. There are again no statistically significant differences between the groups.
+
+```{r Investors and income range}
+ggplot(aes(x = EmploymentStatus, y = Investors, 
+                  color = IncomeRange), 
+       data = subset(loans, LoanStatus == "Current" & 
+                     IncomeRange != "Not employed" &
+                     (EmploymentStatus == "Employed" |
+                     EmploymentStatus == "Full-time" |
+                     EmploymentStatus == "Other" |
+                     EmploymentStatus == "Self-employed"))) +
+    scale_y_continuous(limits = c(0,500)) +
+    geom_point(alpha = 0.4, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+
+(Example: t-test for the "Full-time")
+
+```{r}
+investors.income <- loans %>%
+    filter(LoanStatus == "Current" & 
+                     IncomeRange != "Not employed" &
+                     !is.na(StatedMonthlyIncome) &
+                     (EmploymentStatus == "Employed" |
+                     EmploymentStatus == "Full-time" |
+                     EmploymentStatus == "Other" |
+                     EmploymentStatus == "Self-employed")) %>%
+    group_by(Investors, 
+             EmploymentStatus, 
+             IncomeRange,
+             StatedMonthlyIncome,
+             ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(Investors)
+
+status_to_check = "Full-time"
+investors.income_smpl_1 <- subset(investors.income, 
+                                  EmploymentStatus == status_to_check &
+                                  IncomeRange == "$0")
+investors.income_smpl_2 <- subset(investors.income, 
+                                  EmploymentStatus == status_to_check &
+                                  IncomeRange == "$100,000+")
+
+
+t.test(investors.income_smpl_1$Investors, 
+       investors.income_smpl_2$Investors)
+```
+
+The last plot of the section shows the original amount of the loan (for those who took more than 5,000 dollars) against the same variables. In this investigation, we see that the "Employed" and the "Other" were the ones that had statistically significant differences between the bucket groups.
+
+```{r Loan original amount}
+
+ggplot(aes(x = EmploymentStatus, y = LoanOriginalAmount, 
+                  color = DebtToIncomeRatio.bucket), 
+       data = subset(loans, LoanStatus == "Current" & 
+                     !is.na(DebtToIncomeRatio.bucket) &
+                     LoanOriginalAmount > 5000 &
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    geom_point(alpha = 0.4, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+
+(Example: t-test for the "Employed")
+
+```{r}
+current_loans.employment <- loans %>%
+    filter(LoanStatus == "Current" & 
+         !is.na(DebtToIncomeRatio.bucket) &
+         LoanOriginalAmount > 5000 &
+         EmploymentStatus != "Not available" &
+         EmploymentStatus != "") %>%
+    group_by(LoanOriginalAmount, 
+             EmploymentStatus, 
+             DebtToIncomeRatio.bucket,
+             ListingNumber) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    arrange(LoanOriginalAmount)
+
+status_to_check = "Employed"
+current_loans.employment_low <- subset(current_loans.employment, 
+                                  EmploymentStatus == status_to_check &
+                                  DebtToIncomeRatio.bucket == "(0,0.5]")
+current_loans.employment_high <- subset(current_loans.employment,
+                                  EmploymentStatus == status_to_check &
+                                  DebtToIncomeRatio.bucket == "(0.5,10]")
+
+t.test(current_loans.employment_low$LoanOriginalAmount, 
+       current_loans.employment_high$LoanOriginalAmount)
+```
+
+
+## Final plots and summary
+
+In this section, I present the three figures that I believe are the most informative for the dataset I investigated.
+
+### Figure 1
+
+```{r}
+ggplot(aes(x = EmploymentStatus, y = Investors, 
+           color = LoanStatus), 
+       data = subset(loans, 
+                     (LoanStatus == "Completed" |
+                     LoanStatus == "Defaulted") &
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    ggtitle('Number of investors for completed or defaulted loans') +
+    xlab("Employment status of individuals with loans") +
+    ylab("Number of investors") + 
+    labs(color = "Loan status") +
+    theme(plot.title = element_text(size = 12, face = "bold")) +
+    geom_point(alpha = 0.4, size = 2, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA)
+
+```
+
+#### Caption Fig. 1
+
+This plot shows the number of investors in a finished loan, grouped by the loantakers' employment status and coloured by the loan status. Even though most categories were equally likely to default, this plot is interesting because of the "Self-employed" category. Self employed individuals with more investors seemed to be more likely to default than the rest, which is a counterintuitive result.
+
+### Figure 2
+
+```{r}
+ggplot(aes(x = EmploymentStatus, y = Investors, 
+                  color = IncomeRange), 
+       data = subset(loans, LoanStatus == "Current" & 
+                     IncomeRange != "Not employed" &
+                     (EmploymentStatus == "Employed" |
+                     EmploymentStatus == "Full-time" |
+                     EmploymentStatus == "Other" |
+                     EmploymentStatus == "Self-employed"))) +
+    scale_y_continuous(limits = c(0,500)) +
+    geom_point(alpha = 0.4, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA) +
+    xlab("Employment status of individuals with loans") +
+    ylab("Investors") + 
+    labs(color = "Income range") + 
+    ggtitle('Number of investors per loantakers\' income range') +
+    theme(plot.title = element_text(size = 12, face = "bold"))
+
+```
+
+#### Caption Fig. 2
+
+In this plot we see the number of investors in a current loan, grouped by the loantakers' employment status (excluding retired, part-time and no employed) and coloured by their income range. This plot shows that the number of investors in a loan are not dependent on the loantakers' income (all statistical tests had p > 0.05). We saw in Fig. 1 that self employed loantakers with more investors were more likely to default. Interestigly their income is not correlated with the number of investors involved in their loan.
+
+### Figure 3
+
+```{r}
+ggplot(aes(x = EmploymentStatus, y = AmountDelinquent, 
+                  color = DebtToIncomeRatio.bucket), 
+       data = subset(loans, LoanStatus == "Current" & 
+                     !is.na(DebtToIncomeRatio.bucket) &
+                     AmountDelinquent > 1000 &
+                     EmploymentStatus != "Not available" &
+                     EmploymentStatus != "")) +
+    scale_y_continuous(limits = c(0,10000)) +
+    geom_point(alpha = 0.4, size = 1, position = 'jitter') + 
+    geom_boxplot(outlier.shape=NA) +
+    xlab("Employment status of individuals with loans") +
+    ylab("Amount delinquent (USD)") + 
+    labs(color = "Debt to income ratio") + 
+    ggtitle('Amount delinquent for individuals of each employment status') +
+    theme(plot.title = element_text(size = 12, face = "bold"))
+
+```
+
+#### Caption Fig. 3
+
+In this plot we see the current delinquent amounts (> 1,000 dollars) for individualts with loans, grouped by their employment status and coloured by their debt to income ratio. We can observe a statistically significant difference only in the "Full-time" status, where loantakers have lower debt to income ratio. From the "Part-time" and "Self-employed" categories we see that only those of low debt to income ratio have delinquent amounts, but they are still only a few. Also, few "Retired" people have delinquent amounts. Finally there are no significant differences in the "Employed" and "Other" groups.
+
+## Reflection
+
+This dataset pertains to loan data for about 114,000 individuals. It contains 81 variables of which I explored around 13 of them. At first I explored the variables individually, mainly focusing on subsets of the population that I assumed to be more prone to default (low income, with delinquent payments and high debt to income ratio). Continuing, I assumed that if I explored characteristics for individuals with completed and defaulted loans, I could maybe predict whether those currently holding loans are going to default or not (only those in the category "Current" as it is the most populus).
+
+I grouped those with completed or defaulted loans according to their employment status because I wanted to see whether this could also be a predicting factor of default. For that part of the analysis I explored variables pertaining to their delinquencies the last 7 years, original loaned amount, whether they own a home or not, investors involved etc. The first thing I observed is that there doesn't seem to be any correlation between defaults and employment status. Furthermore, in almost all the variables I observed, both completed and defaulted loans had no statistically significant differences. Afterwards, I investigated those with loan status equal to "Current". I wanted to see whether the currrent income, the debt to income ratio, the employment status, the loaned amount and the delinquencies will show any patterns among the population. The results of that analysis showed again no statistically significant differences in most of the values observed. From this I concluded that either there are not enough relevant variables in order to make inferences or that events which decide whether a loan defaults or not are equally possible to happen to everyone. 
+
+During the analysis it was very difficult for me to find meaningful variables to compare. As I set my goal to uncover possible driving factors that make loans default, I expected to find correlations between e.g. income or delinquent amounts and the probability for a loan to default. After extensive exploration of a lot of the variables I found only a few statistical significant differences between groups. On the one hand this was a success because these differences were very difficult to uncover, on the other hand this lack of pattern might be due to the fact that the important pieces of information responsible for the defaults are not included in this dataset. Furthermore, this dataset is limited in the sense that it doesn't include historical data so that I could better investigate those with completed or defaulted loans at the time these loans were active. Finally, the dataset does not contain all the loans that individuals might have and it would be very interesting if these data could be compared with data from other sources to explore all possible loans for all individuals.
+
+
+## References
+
+R markdown documentation: http://rmarkdown.rstudio.com/lesson-1.html
+
+ggplot2 documentation: http://docs.ggplot2.org/current/
+
+grid package documentation: https://stat.ethz.ch/R-manual/R-devel/library/grid/html/00Index.html

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!--//////////////////////////////////////////////////////////////////////////
+/////////////////////////////////// STYLE ////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////-->
+<style>
+
+/* Title */
+  h1 {
+    position: absolute;
+    top: 0;
+    left: 220px;
+    font-size: 22px;
+    text-align: center;
+    color: black;
+  }
+  h2 {
+    position: absolute;
+    left: 150px;
+    font-size: 18px;
+    text-align: center;
+    color: black;
+  }
+
+  h3 {
+    position: absolute;
+    left: 163px;
+    font-size: 14px;
+    text-align: center;
+    color: black;
+  }
+
+/* Paragraph with data information */
+  p {
+    position: absolute;
+    top: 550px;
+  }
+
+  .chart {
+    position: absolute;
+    top: 200px;
+    left: 30px;
+    right: 30px;
+  }
+
+  .bar {
+    fill: steelblue;
+  }
+
+/* Change color when hover above the bar */
+  .bar:hover {
+    fill: brown;
+  }
+
+  .axis text {
+    font: 12px sans-serif;
+  }
+
+  .x.axis path,
+    .axis line {
+        fill: none;
+        stroke: black;
+        shape-rendering: crispEdges;
+  }
+
+  .y.axis path,
+      .axis line {
+        fill: none;
+        stroke: black;
+        shape-rendering: crispEdges;
+      }
+
+  .d3-tip {
+    line-height: 1;
+    padding: 12px;
+    font-weight: bold;
+    background: darkgray;
+    color: rgb(255, 255, 255);
+    border-radius: 2px;
+    opacity: 1.0;
+    transition: opacity 0.4s;
+  }
+
+/* Small arrow in the bottom of the hovertip */
+  .d3-tip:after {
+    box-sizing: border-box;
+    display: inline;
+    font-size: 10px;
+    width: 100%;
+    line-height: 1;
+    color: darkgray;
+    content: "\25BC";
+    position: absolute;
+    text-align: center;
+  }
+
+  .d3-tip.n:after {
+    margin: -1px 0 0 0;
+    top: 100%;
+    left: 0;
+  }
+
+</style>
+<svg class="chart"></svg>
+<script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script 
+  src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js">
+</script>
+<link rel="stylesheet" href="//rawgithub.com/Caged/d3-tip/master/examples/example-styles.css">
+<script>
+
+//////////////////////////////////////////////////////////////////////////////
+/////////////////////////// INITIALIZE VARIABLES /////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
+// Set dimensions and margins for the chart
+  var margin = {top: 20, right: 30, bottom: 80, left: 70},
+      width = 1034 - margin.left - margin.right,
+      height = 350 - margin.top - margin.bottom;
+
+// Define scale and axes
+  var x = d3.scale
+            .ordinal()
+            .rangeRoundBands([0, width], .1);
+
+  var y = d3.scale
+            .linear()
+            .range([height, 0]);
+
+  var xAxis = d3.svg
+                .axis()
+                .scale(x)
+                .orient("bottom");
+
+  var yAxis = d3.svg
+                .axis()
+                .scale(y)
+                .orient("left");
+
+// Initialize the chart
+  var chart = d3.select(".chart")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform",
+                      "translate(" + margin.left + "," + margin.top + ")");
+
+// Create the hovertip and add the information it will display
+  var tip = d3.tip()
+              .attr('class', 'd3-tip')
+              .offset([-10, 0])
+              .html(function(d) {
+                return "<strong>Airport: </strong><span>" + 
+                d.values.state.airport + // Airport code
+                ", " + 
+                d.values.state.state + 
+                "<br /><br /><strong>Delay time:</strong><span>" +
+                "<ul><li><strong>Average:</strong> \
+                <span style='color:green'>" +
+                Number((d.values.mean).toFixed(1)) + // Average delay
+                " m</span></li> <br /> \
+                <li><strong>50% of flights ≤ </strong> \
+                <span style='color:green'>"+
+                 d.values.median + // Median delay
+                " m</span> </li><br /><li> <strong>Maximum: </strong> \
+                <span style='color:red'>"+
+                Number((d.values.max).toFixed(1)) + // Maximum delay
+                " h</span> </li> </ul>";
+              });
+
+  chart.call(tip);
+
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////// LOAD THE CSV FILES //////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
+// Load csv file to transform airport codes to full state names
+  var iata_codes = {};
+  d3.csv('iata_to_states.csv', function(d) {
+                    iata_codes = d;
+                    return iata_codes;
+                });
+
+// Load airport traffic information for 2008 (refers only to the airports 
+// appearing in the chart)
+  var airport_traffic = {};
+  d3.csv('airport_traffic_2008.csv', function(d) {
+                    airport_traffic = d;
+                    return airport_traffic;
+                });
+
+// Append to the body the title and data information
+  d3.select("body")
+    .append("h1")
+    .html("Flights are usually on time at the 20 US airports with the \
+          highest average delays:");
+  d3.select("h1")
+    .append("h2")
+    .html("Few long delays make airports appear worse than they are");
+  d3.select("h2")
+    .append("h3")
+    .html("(7 to 13 January 2008)");
+  d3.select("body")
+    .append("p")
+    .html("Data: " + '<a \
+          href= "http://stat-computing.org/dataexpo/2009/the-data.html" \
+    target="_blank">' + "Bureau of Transportation Statistics" + "</a>");
+
+//  Load the main csv file that contains the flight delay information
+  d3.csv("2_week_jan_08.csv", function(error, data) {
+    if (error) throw error;
+
+// This variable contains all the information that I use from the previous 
+// csv file. It contains the airport codes as keys and as values the mean, 
+// max, median delaysm the width of the bars, the traffic information, the 
+// airport code and the name of the state. All the above information appear 
+// in order in the following nest.
+  var delaysAverage = d3.nest()
+                        // Set as keys the codes of the airports
+                        .key(function(d) { return d.Origin; })
+//////////////////////////////////////////////////////////////////////////////
+                        .rollup(function(v) { return {
+                  // Mean delay
+                  mean: d3.mean(v, function(d) { return +d.DepDelay; }),
+                  // Maximum delay
+                  max: d3.max(v, function(d) { return +d.DepDelay / 60; }),
+                  // Median delay
+                  median: d3.median(v, function(d) { return +d.DepDelay; }),
+                  state: d3.max(v, function(d) { return {
+                    // Airport code
+                    airport: d.Origin,
+                    // State full name
+                    state: iata_codes["0"][d.Origin]};})
+                  }; })
+//////////////////////////////////////////////////////////////////////////////
+                        .entries(data);
+
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// FINALIZE CHART //////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
+// Sort the average delays
+  delaysAverage.sort(function(a, b) {
+    return  b.values.mean - a.values.mean;
+  });
+  delaysAverage = delaysAverage.slice(1, 21);
+
+// Define the domain of the axes
+  x.domain(delaysAverage.map(function(d) { return d.key; }));
+  y.domain([0, d3.max(delaysAverage, function(d) { return d.values.mean; })]);
+
+// Append the x axis to the chart
+  chart.append("g")
+       .attr("class", "x axis")
+       .attr("transform", "translate(0," + height + ")")
+       .call(xAxis);
+
+// Append the y axis to the chart
+  chart.append("g")
+       .attr("class", "y axis")
+       .call(yAxis);
+
+// Tilt the x axis ticks
+  chart.selectAll(".x.axis text")
+       .attr("transform", function(d) {
+          return "translate(" + this.getBBox().height * -2 + "," + 
+          this.getBBox().height + ")rotate(-45)";});
+
+//  Append the y axis name to the chart
+  chart.append("text")
+       .attr("transform", "rotate(-90)")
+       .attr("y", 0 - margin.left)
+       .attr("x",0 - (height / 2))
+       .attr("dy", "1em")
+       .style("text-anchor", "middle")
+       .text("Average delay (m)");
+
+//  Append the x axis name to the chart
+  chart.append("text")
+       .attr("transform",
+            "translate(" + (width/2) + " ," + 
+                           (height + margin.top + 50) + ")")
+       .style("text-anchor", "middle")
+       .html("Airport IATA code");
+
+
+// Bind the data and the hovertip events to the chart
+  chart.selectAll(".bar")
+       .data(delaysAverage)
+       .enter()
+       .append("rect")
+       .attr("class", "bar")
+       .attr("x", function(d) { return x(d.key); })
+       .attr("y", function(d) { return y(d.values.mean); })
+       .attr("height", function(d) { return height - y(d.values.mean); })
+       .attr("width", function(d) { return x.rangeBand()/3})
+       .on("mouseover", tip.show)
+       .on('mouseout', tip.hide);
+
+});
+
+</script>

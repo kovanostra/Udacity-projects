@@ -1,0 +1,87 @@
+## SUMMARY:
+
+This is a bar plot of the 20 airports that had the highest minutes of delay, on average, for 7 - 13 January 2008. Hovering above the bars one can see the code of the airport (iata), the state whete it is located and some other statistics concerning delay times for that time period. It is notable that while maximum delay times are high, the median delays are very low (or non-existent in some cases). The data I used comes from the Bureau of Transportation Statistics and can be downloaded from the following webpage: http://stat-computing.org/dataexpo/2009/the-data.html.
+
+## DESIGN:
+
+##### Main findings:
+
+The first finding is that all average and median delays were very small. Less than 10 minutes for the average and less than 3 minutes for the median delays. The median most of the times is less than equal to zero, which means that half the flights left before or on time. So even though these are the airports with the highest delays the situation is certainly good on average.
+
+On the other hand the maximum delays can be very high an thus affect the mean a lot. For example, the two airports with the highest average delay were the ones with the highest maximum delays as well. For longer time periods these outliers can raise a lot the value of the average. Therefore, analyzing results per week is a better choice when including these outlier values.
+
+It is surprising that very big airports are generally absent for the graph (like ATL, ORD, JFK, DFW). From the biggest only LAX is present. Thus, huge airports had even lower average delays for that time period. Finally, maximum delays are between 1.7 h and 4.0 h for most airports independently of the size.
+
+##### Initial design:
+
+I chose to use a barplot, for being easier to show comparissons between average delays in airports. This chart includes data for the second week of January 2008, which allows it to load faster, however other time periods could be used. 
+
+I used a tooltip to show better the average delay time, as well as, extra data such as median delays, maximum delays and the state which the airport is located.
+
+The color of the bar is steel blue and changes to brown whenever the user hovers the mouse over it.
+
+##### After feedback:
+
+Incorporating the feedback of my colleagues I, first of all, put labels to the axes and simplified the title. The ticks on the x axis are tilted also in the final version for better visual results. In addition, the chart size is optimized for better viewing of the tooltips.
+
+Moreover, I changed the order of the information in the tooltip and shortened the unit names. I used green color to give extra emphasis to the fact that average and median delays were small and red to for highlighting that maximum delays were huge. In this version I used the full names of the states to make it more understandable to non americans and I included data for the number of passengers that each airport served in 2008. 
+
+Finally, I included a link for downloading the data at the bottom of the page to help anyone interested find the source more easily.
+
+
+## FEEDBACK:
+
+I asked three of my colleagues to provide me with feedback over the visualization. Below I note their comments.
+
+Colleague 1:
+    - Axes should have labels (at least the y axis)
+    - The two letter codes of the US states are easy to understand for Americans, but not for others. States should have their full name.
+    - In the box appearing when hovering over the bars the red and black are not a good combination. Use only white (bold for categories, normal for results)
+    - Title: Only people can be 'patient', not airports
+    - Last box: fix
+    - Order results as Average -> median -> max
+    - Which airport are busiest or not? (More delay -> more busy?`)
+
+
+Colleague 2:
+    - Y axis information/ x axis information
+    - Use shorter unit format ("m" instead of "minutes")
+    - Display Average -> max -> median
+    - The title is not clear "most 'patient'"
+    - The average delays should only be in red
+    - Display data source
+
+
+Colleague 3:
+    - Median very different from mean (refered to the data for the whole january 2008, which is very slow to load in the final version of the chart)
+    - Axis descriptions missing
+    - Explain negative delay
+    - Some airports are very small. Use passenger minutes delayed instead of average delay (passengers*total delay)
+    - Red font is not nice
+    - Say "US" airports instead of "American"
+
+## REFERENCES:
+
+Guide for bar charts: https://bost.ocks.org/mike/bar/
+
+Column values as keys to object: https://stackoverflow.com/questions/31882713/d3-csv-map-column-values-as-keys-in-object
+
+Airport traffic data (2008): 
+    - https://en.wikipedia.org/wiki/List_of_the_busiest_airports_in_the_United_States#Busiest_US_airports_by_total_passenger_boardings
+    - https://en.wikipedia.org/wiki/T._F._Green_Airport#Annual_traffic
+    - https://en.wikipedia.org/wiki/Reno%E2%80%93Tahoe_International_Airport#Annual_traffic
+    - https://en.wikipedia.org/wiki/Spokane_International_Airport#Annual_traffic
+    - https://en.wikipedia.org/wiki/Boise_Airport#Annual_traffic
+    - https://en.wikipedia.org/wiki/Cleveland_Hopkins_International_Airport#Annual_passenger_traffic
+    - https://en.wikipedia.org/wiki/William_P._Hobby_Airport#Annual_traffic
+    - https://en.wikipedia.org/wiki/Indianapolis_International_Airport#Annual_traffic
+    - https://en.wikipedia.org/wiki/Sacramento_International_Airport#Annual_traffic
+    - https://en.wikipedia.org/wiki/San_Jos%C3%A9_International_Airport#Annual_traffic
+
+Grouping data: http://learnjsdata.com/group_data.html
+
+d3 hovertip: http://bl.ocks.org/Caged/6476579
+
+Axes manipulation: 
+    - http://bl.ocks.org/phoebebright/3061203
+    - https://bl.ocks.org/d3noob/23e42c8f67210ac6c678db2cd07a747e
