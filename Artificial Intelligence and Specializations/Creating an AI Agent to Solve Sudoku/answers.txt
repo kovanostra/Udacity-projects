@@ -1,0 +1,10 @@
+# Artificial Intelligence Nanodegree
+## Introductory Project: Diagonal Sudoku Solver
+
+# Question 1 (Naked Twins)
+Q: How do we use constraint propagation to solve the naked twins problem?  
+A: In the typical elimination strategy one eliminates the value of a single digit box from its peers. In the naked twins problem one finds common peers between two identical two-digit boxes and eliminates from them these two digits.
+
+# Question 2 (Diagonal Sudoku)
+Q: How do we use constraint propagation to solve the diagonal sudoku problem?  
+A: The difference between a typical sudoku and a diagonal one is that in the latter a box that belongs to one of the main diagonal units has additional peer boxes. These additional boxes are those belonging to the respective main diagonal. Therefore, the only difference in constraint propagation is that one needs to consider additional peers for some boxes.
