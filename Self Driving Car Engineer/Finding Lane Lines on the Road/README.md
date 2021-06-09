@@ -10,7 +10,7 @@
 
 In this project, I have created a pipeline able to detect line markings on the road. This pipeline uses a traditional 
 openCV approach and its implementation can be found in the P1.ipynb. The line detection is implemented in a dataset 
-consisting of 3 videos and that can be viewed after executing the jupyter notebook.
+consisting of 3 videos, which can be viewed after executing the jupyter notebook.
 
 My pipeline consists of the following five steps:
 
@@ -55,8 +55,8 @@ The hough lines were implemented with the following parameters:
 The hough lines algorithm sometimes outputted many lines that were not very relevant. I performed the following steps 
 to filter out the most relevant ones, and to merge them into two final lines:
 
- - I separated left and right lines based on whether their angle was negative or positive, respectively, and they 
-appeared on the left or right side of the image.
+ - I separated the left and right lines based on whether their angle was negative or positive, respectively, and whether
+   they appeared on the left or right side of the image.
  - For the left lines I kept those between -33 and -40 degrees and for the right lines those between 25 and 35 degrees.
  - Finally, I kept only the (x_min, x_max) & (y_min, y_max) out of all the left and right lines, and I joined them to 
    make the final lines that are shown in the images. 
@@ -65,18 +65,18 @@ appeared on the left or right side of the image.
 
 ### 2. Limitations
 
-A limitation with my approach is that it will not work for left or right lines greater than the limits set inside the 
-draw_lines() function and they will have to be increased. However, this poses the risk of not being able to filter 
-correctly some other irrelevant lines. The same holds for the region of interest choice.
+A limitation with this approach is that it will not work for left or right lines greater than the limits set inside the 
+draw_lines() function. To mitigate that the limits will have to be increased which poses the risk of making the 
+algorithm unable to filter correctly the irrelevant lines. The same holds for the region of interest choice.
 
 Another limitation is that the canny edges limits are set so that they work under conditions of relatively high 
 contrast. As it becomes easily apparent in the final video, the road conditions can change so that the contrast suddenly
-becomes low. This makes the algorithm failing to detect it, thus potentially confusing a car that may rely on these 
-results for navigation.
+becomes low. This makes the algorithm failing to detect any line on the road, thus potentially confusing a car that may 
+rely on these results for its navigation.
 
-This approach assumes only straight lines and is bound to fail whenever there are short turns like on the final video.
-In that case, it will be difficult for a self-driving to understand that there is a turn with the danger of it 
-speeding instead of breaking.
+This approach assumes only straight lines and is bound to fail whenever there are short turns like on the challenge.mp4 
+video. In that case, it will be difficult for a self-driving car to understand that there is a turn with the danger of 
+it speeding instead of breaking.
 
 Finally, this pipeline is limited to work only when there are no other cars in its field of view with high contrast 
 lines printed on them, triangular traffic signs printed on the road, etc. 
@@ -88,9 +88,9 @@ A possible way to configure the pipeline to better detect turns is to try and de
 lines and join them sequentially, thus creating curvy lines at the end instead of straight ones. 
 
 A way to mitigate the issue of low contrast between the road and the lines would be to modify the parameters of 
-the canny edge detection based on the total brightness of the image, creating a kind of dynamic pipeline. However, this 
-would be an approach very difficult to manually calibrate for every possible condition.
+the canny edge detection based on the total brightness of the image, thus creating a kind of dynamic pipeline. However, 
+this would be an approach very difficult to calibrate for every possible condition.
 
-Finally, to solve the problem posed by other objects appearing inside the region of interest and confusing the algorithm
-it would be very important to add an object detection layer which would ignore any detections inside the bounding box of
-objects detected on the road.
+Finally, to solve the problem posed by other objects appearing inside the region of interest, which confuse the 
+algorithm, would be to add an object detection layer which would ignore any detections inside the bounding box of
+any object detected on the road.
