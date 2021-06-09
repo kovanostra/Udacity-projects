@@ -1,56 +1,96 @@
-# **Finding Lane Lines on the Road** 
-[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
+# **Finding Lane Lines on the Road**
 
-<img src="examples/laneLines_thirdPass.jpg" width="480" alt="Combined Image" />
+[gray]: ./examples/gray.jpg "Grayscale"
+[gaussian]: ./examples/gaussian.jpg "Gaussian blur"
+[canny]: ./examples/canny.jpg "Canny"
+[region]: ./examples/region.jpg "Region of interest"
+[hough]: ./examples/hough.jpg "Hough lines"
 
-Overview
----
+### 1. Pipeline description
 
-When we drive, we use our eyes to decide where to go.  The lines on the road that show us where the lanes are act as our constant reference for where to steer the vehicle.  Naturally, one of the first things we would like to do in developing a self-driving car is to automatically detect lane lines using an algorithm.
+In this project, I have created a pipeline able to detect line markings on the road. This pipeline uses a traditional 
+openCV approach and its implementation can be found in the P1.ipynb. The line detection is implemented in a dataset 
+consisting of 3 videos and that can be viewed after executing the jupyter notebook.
 
-In this project you will detect lane lines in images using Python and OpenCV.  OpenCV means "Open-Source Computer Vision", which is a package that has many useful tools for analyzing images.  
+My pipeline consists of the following five steps:
 
-To complete the project, two files will be submitted: a file containing project code and a file containing a brief write up explaining your solution. We have included template files to be used both for the [code](https://github.com/udacity/CarND-LaneLines-P1/blob/master/P1.ipynb) and the [writeup](https://github.com/udacity/CarND-LaneLines-P1/blob/master/writeup_template.md).The code file is called P1.ipynb and the writeup template is writeup_template.md 
+##### 1. Grayscale conversion
 
-To meet specifications in the project, take a look at the requirements in the [project rubric](https://review.udacity.com/#!/rubrics/322/view)
+![alt text][gray]
+
+##### 2. Gaussian blur
+
+The gaussian blur is implemented with a kernel of size 7.
+
+![alt text][gaussian]
+
+##### 3. Canny edges
+
+The canny edges were implemented with a low threshold of 60 and a high threshold of 180.
+
+![alt text][canny]
+
+##### 4. Region of interest
+
+I selected a trapezoid region of interest that allows to focus only on the area were the lines are. 
+I used the following parameters:
+
+ - X bottom left is set to 20% of image width
+ - X Bottom right is set to 95% of image width
+ - X top left is set to 45% of image width
+ - X top right is set to 55% of the image width
+ - Y stretches from 100% to 60% of the image height
+
+![alt text][region]
+
+##### 5. Hough lines
+
+The hough lines were implemented with the following parameters:
+
+ - ρ: 1
+ - θ: π/180
+ - minimum line length: 20
+ - maximum line gap: 30
+
+The hough lines algorithm sometimes outputted many lines that were not very relevant. I performed the following steps 
+to filter out the most relevant ones, and to merge them into two final lines:
+
+ - I separated left and right lines based on whether their angle was negative or positive, respectively, and they 
+appeared on the left or right side of the image.
+ - For the left lines I kept those between -33 and -40 degrees and for the right lines those between 25 and 35 degrees.
+ - Finally, I kept only the (x_min, x_max) & (y_min, y_max) out of all the left and right lines, and I joined them to 
+   make the final lines that are shown in the images. 
+
+![alt text][hough]
+
+### 2. Limitations
+
+A limitation with my approach is that it will not work for left or right lines greater than the limits set inside the 
+draw_lines() function and they will have to be increased. However, this poses the risk of not being able to filter 
+correctly some other irrelevant lines. The same holds for the region of interest choice.
+
+Another limitation is that the canny edges limits are set so that they work under conditions of relatively high 
+contrast. As it becomes easily apparent in the final video, the road conditions can change so that the contrast suddenly
+becomes low. This makes the algorithm failing to detect it, thus potentially confusing a car that may rely on these 
+results for navigation.
+
+This approach assumes only straight lines and is bound to fail whenever there are short turns like on the final video.
+In that case, it will be difficult for a self-driving to understand that there is a turn with the danger of it 
+speeding instead of breaking.
+
+Finally, this pipeline is limited to work only when there are no other cars in its field of view with high contrast 
+lines printed on them, triangular traffic signs printed on the road, etc. 
 
 
-Creating a Great Writeup
----
-For this project, a great writeup should provide a detailed response to the "Reflection" section of the [project rubric](https://review.udacity.com/#!/rubrics/322/view). There are three parts to the reflection:
+### 3. Ideas for improvement
 
-1. Describe the pipeline
+A possible way to configure the pipeline to better detect turns is to try and detect small segments in the road
+lines and join them sequentially, thus creating curvy lines at the end instead of straight ones. 
 
-2. Identify any shortcomings
+A way to mitigate the issue of low contrast between the road and the lines would be to modify the parameters of 
+the canny edge detection based on the total brightness of the image, creating a kind of dynamic pipeline. However, this 
+would be an approach very difficult to manually calibrate for every possible condition.
 
-3. Suggest possible improvements
-
-We encourage using images in your writeup to demonstrate how your pipeline works.  
-
-All that said, please be concise!  We're not looking for you to write a book here: just a brief description.
-
-You're not required to use markdown for your writeup.  If you use another method please just submit a pdf of your writeup. Here is a link to a [writeup template file](https://github.com/udacity/CarND-LaneLines-P1/blob/master/writeup_template.md). 
-
-
-The Project
----
-
-## If you have already installed the [CarND Term1 Starter Kit](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) you should be good to go!   If not, you should install the starter kit to get started on this project. ##
-
-**Step 1:** Set up the [CarND Term1 Starter Kit](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) if you haven't already.
-
-**Step 2:** Open the code in a Jupyter Notebook
-
-You will complete the project code in a Jupyter notebook.  If you are unfamiliar with Jupyter Notebooks, check out [Udacity's free course on Anaconda and Jupyter Notebooks](https://classroom.udacity.com/courses/ud1111) to get started.
-
-Jupyter is an Ipython notebook where you can run blocks of code and see results interactively.  All the code for this project is contained in a Jupyter notebook. To start Jupyter in your browser, use terminal to navigate to your project directory and then run the following command at the terminal prompt (be sure you've activated your Python 3 carnd-term1 environment as described in the [CarND Term1 Starter Kit](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) installation instructions!):
-
-`> jupyter notebook`
-
-A browser window will appear showing the contents of the current directory.  Click on the file called "P1.ipynb".  Another browser window will appear displaying the notebook.  Follow the instructions in the notebook to complete the project.  
-
-**Step 3:** Complete the project and submit both the Ipython notebook and the project writeup
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
+Finally, to solve the problem posed by other objects appearing inside the region of interest and confusing the algorithm
+it would be very important to add an object detection layer which would ignore any detections inside the bounding box of
+objects detected on the road.
