@@ -6,7 +6,16 @@
 [region]: ./examples/region.jpg "Region of interest"
 [hough]: ./examples/hough.jpg "Hough lines"
 
-### 1. Pipeline description
+### 1. Requirements
+
+ - Python==3.6.13
+ - numpy==1.19.5
+ - python-opencv==4.5.2.52
+ - matplotlib==3.3.4
+ - moviepy==1.0.3
+
+
+### 2. Pipeline description
 
 In this project, I have created a pipeline able to detect line markings on the road. This pipeline uses a traditional 
 openCV approach and its implementation can be found in the P1.ipynb. The line detection is implemented in a dataset 
@@ -63,7 +72,7 @@ to filter out the most relevant ones, and to merge them into two final lines:
 
 ![alt text][hough]
 
-### 2. Limitations
+### 3. Limitations
 
 A limitation with this approach is that it will not work for left or right lines greater than the limits set inside the 
 draw_lines() function. To mitigate that the limits will have to be increased which poses the risk of making the 
@@ -82,7 +91,7 @@ Finally, this pipeline is limited to work only when there are no other cars in i
 lines printed on them, triangular traffic signs printed on the road, etc. 
 
 
-### 3. Ideas for improvement
+### 4. Ideas for improvement
 
 A possible way to configure the pipeline to better detect turns is to try and detect small segments in the road
 lines and join them sequentially, thus creating curvy lines at the end instead of straight ones. 
