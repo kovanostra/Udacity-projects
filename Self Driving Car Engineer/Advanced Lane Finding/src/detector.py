@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from matplotlib import image as mpimg, pyplot as plt
 
+from src.lane_finder import LaneFinder
 from src.logger import get_logger
 
 
@@ -28,7 +29,8 @@ class Detector:
             image_undistorted = self._undistort_image(image)
             image_gradients = self._get_gradients(image_undistorted)
             image_transformed = self._apply_perspective_transform(image_gradients)
-            plt.imshow(image_transformed)
+            road_lines = self._find_road_lanes(image_transformed)
+            plt.imshow(road_lines)
             plt.show()
 
     def _load_images(self, calibration_directory: str, images_directory: str):
@@ -39,7 +41,6 @@ class Detector:
         get_logger().info("Loaded images from ./{}".format(images_directory))
 
     def _calibrate_camera(self, nx: int = 9, ny: int = 6):
-        get_logger().info("Starting camera calibration")
         all_object_points = np.zeros(shape=(ny * nx, 3), dtype=np.float32)
         all_object_points[:, :2] = np.mgrid[0:nx, 0:ny].T.reshape(-1, 2)
         image_points_2d = []
@@ -109,6 +110,64 @@ class Detector:
         img_size = (image_gradients.shape[1], image_gradients.shape[0])
         image_transformed = cv2.warpPerspective(image_gradients, self.transform_matrix, img_size)
         return image_transformed
+
+    def _find_road_lanes(self, image_transformed: np.ndarray) -> np.ndarray:
+        left_lane, right_lane = self._find_lane_pixels(image_transformed)
+        left_fitx, right_fitx = self._fit_polynomial(image_transformed, left_lane, right_lane)
+
+        out_img = np.copy(image_transformed)  # np.dstack((image_transformed, image_transformed, image_transformed))
+        for window_index in range(len(left_lane.windows)):
+            left_window = left_lane.windows[window_index]
+            right_window = right_lane.windows[window_index]
+            cv2.rectangle(out_img, (left_window.x_low, left_window.y_low),
+                          (left_window.x_high, left_window.y_high), (0, 255, 0), 2)
+            cv2.rectangle(out_img, (right_window.x_low, right_window.y_low),
+                          (right_window.x_high, right_window.y_high), (0, 255, 0), 2)
+
+        ## Visualization ##
+        # Colors in the left and right lane regions
+        out_img[left_lane.y_positions, left_lane.x_positions] = [255, 0, 0]
+        out_img[right_lane.y_positions, right_lane.x_positions] = [0, 0, 255]
+
+        # Plots the left and right polynomials on the lane lines
+        ploty = np.linspace(0, image_transformed.shape[0] - 1, image_transformed.shape[0])
+        plt.plot(left_fitx, ploty, color='yellow')
+        plt.plot(right_fitx, ploty, color='yellow')
+        return image_transformed
+
+    def _find_lane_pixels(self,
+                          image_transformed: np.ndarray,
+                          number_of_windows: int = 9,
+                          margin: int = 200,
+                          min_pixels: int = 50) -> Tuple[LaneFinder, LaneFinder]:
+        # histogram = np.sum(image_transformed[image_transformed.shape[0] // 2:, :], axis=0)
+        histogram = np.sum(image_transformed, axis=0)
+        histogram_midpoint = np.int(histogram.shape[0] // 2)
+
+        left_lane = LaneFinder(image=image_transformed,
+                               base=np.argmax(histogram[:histogram_midpoint]),
+                               number_of_windows=number_of_windows)
+        left_lane.search_lane_points(margin, min_pixels)
+
+        right_lane = LaneFinder(image=image_transformed,
+                                base=np.argmax(histogram[histogram_midpoint:]) + histogram_midpoint,
+                                number_of_windows=number_of_windows)
+        right_lane.search_lane_points(margin, min_pixels)
+        return left_lane, right_lane
+
+    def _fit_polynomial(self,
+                        image_transformed: np.ndarray,
+                        left_lane: LaneFinder,
+                        right_lane: LaneFinder) -> Tuple[np.ndarray, np.ndarray]:
+        left_fit = np.polyfit(left_lane.y_positions, left_lane.x_positions, deg=2)
+        right_fit = np.polyfit(right_lane.y_positions, right_lane.x_positions, deg=2)
+
+        # Generate x and y values for plotting
+        ploty = np.linspace(0, image_transformed.shape[0] - 1, image_transformed.shape[0])
+        left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+        right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+
+        return left_fitx, right_fitx
 
     @staticmethod
     def _to_hls(image: np.ndarray) -> np.ndarray:
