@@ -2,8 +2,8 @@ import logging
 
 import click
 
-from src.detector import Detector
-from src.logger import setup_logging
+from src.use_case.image_lanes_detector import ImageLanesDetector
+from src.domain.logger import setup_logging
 
 
 @click.group("lane-detector")
@@ -16,7 +16,7 @@ def main(debug):
 @click.command('detect-video', help='Starts lane detection on video')
 @click.option("--video_path", envvar='VIDEO_PATH')
 def detect_video(video_path: str) -> None:
-    detector = Detector()
+    detector = ImageLanesDetector()
     detector.start(video_path)
 
 
@@ -25,7 +25,7 @@ def detect_video(video_path: str) -> None:
 @click.option("--calibration_directory", envvar='CALIBRATION_DIRECTORY')
 @click.option("--output_directory", envvar='OUTPUT_DIRECTORY')
 def detect_images(images_directory: str, calibration_directory: str, output_directory: str) -> None:
-    detector = Detector()
+    detector = ImageLanesDetector()
     detector.build(images_directory, calibration_directory, output_directory)
     detector.start()
 
