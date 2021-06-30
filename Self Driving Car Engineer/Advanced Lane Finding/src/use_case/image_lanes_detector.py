@@ -34,7 +34,7 @@ class ImageLanesDetector:
             image_transformed = self._apply_perspective_transform(image_gradients)
             road_lanes = self._find_road_lanes(image_transformed)
             road_lanes_reverted = self._apply_inverse_perspective_transform(road_lanes)
-            final_image = (np.copy(image_undistorted) + road_lanes_reverted.astype(int))//2
+            final_image = (np.copy(image_undistorted) + road_lanes_reverted.astype(int)) // 2
             plt.imshow(final_image)
             plt.show()
 
@@ -117,37 +117,30 @@ class ImageLanesDetector:
         return image_transformed
 
     def _find_road_lanes(self, image: np.ndarray) -> np.ndarray:
-        left_lane, right_lane, output_image = self._find_lane_pixels(image)
+        left_lane, right_lane = self._find_lane_pixels(image)
         left_fit_x, right_fit_x = self._fit_polynomial(image, left_lane, right_lane)
-        self._draw_lanes(output_image, left_fit_x, right_fit_x)
+        output_image = self._draw_lanes(image, left_fit_x, right_fit_x)
         return output_image
 
     @staticmethod
-    def _draw_lanes(output_image: np.ndarray, left_fit_x: np.ndarray, right_fit_x: np.ndarray) -> None:
-        output_image[:, left_fit_x] = RED
-        output_image[:, right_fit_x] = RED
+    def _draw_lanes(image: np.ndarray, left_fit_x: np.ndarray, right_fit_x: np.ndarray) -> np.ndarray:
+        output_image = np.zeros(shape=(image.shape[0], image.shape[1], 3))
+        left_y = np.linspace(0, len(left_fit_x) - 1, len(left_fit_x)).astype(int)
+        right_y = np.linspace(0, len(right_fit_x) - 1, len(right_fit_x)).astype(int)
+        lane_area_points = list(zip(left_fit_x, left_y)) + list(zip(right_fit_x, right_y))
+        lane_area_points_sorted = np.array(sorted(lane_area_points, key=lambda x: x[1]), dtype=np.int32).reshape((-1, 1, 2))
+        cv2.fillPoly(output_image, [lane_area_points_sorted], GREEN)
+        return output_image
 
     @staticmethod
-    def _draw_windows(image: np.ndarray, left_lane_finder: LaneFinder, right_lane_finder: LaneFinder) -> np.ndarray:
-        for window_index in range(len(left_lane_finder.windows)):
-            left_window = left_lane_finder.windows[window_index]
-            right_window = right_lane_finder.windows[window_index]
-            cv2.rectangle(image, (left_window.x_low, left_window.y_low),
-                          (left_window.x_high, left_window.y_high), GREEN, -1)
-            cv2.rectangle(image, (right_window.x_low, right_window.y_low),
-                          (right_window.x_high, right_window.y_high), GREEN, -1)
-        return image
-
-    def _find_lane_pixels(self, image: np.ndarray) -> Tuple[Lane, Lane, np.ndarray]:
+    def _find_lane_pixels(image: np.ndarray) -> Tuple[Lane, Lane]:
         histogram = np.sum(image[image.shape[0] // 2:, :], axis=0)
         histogram_midpoint = np.int(histogram.shape[0] // 2)
         left_lane_finder = LaneFinder(image=image, base=np.argmax(histogram[:histogram_midpoint]))
         left_lane = left_lane_finder.search_lane_points()
         right_lane_finder = LaneFinder(image=image, base=np.argmax(histogram[histogram_midpoint:]) + histogram_midpoint)
         right_lane = right_lane_finder.search_lane_points()
-        output_image = np.zeros(shape=(image.shape[0], image.shape[1], 3))
-        output_image = self._draw_windows(output_image, left_lane_finder, right_lane_finder)
-        return left_lane, right_lane, output_image
+        return left_lane, right_lane
 
     def _fit_polynomial(self, image: np.ndarray, left_lane: Lane, right_lane: Lane) -> Tuple[np.ndarray, np.ndarray]:
         left_parameters = np.polyfit(left_lane.y, left_lane.x, deg=2)
