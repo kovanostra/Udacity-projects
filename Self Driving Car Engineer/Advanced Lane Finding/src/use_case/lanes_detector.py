@@ -90,7 +90,7 @@ class LanesDetector(metaclass=ABCMeta):
     def _get_vertices(image: np.ndarray) -> np.ndarray:
         height_limit = 0.6
         width_limit_bottom_min = 0.2
-        width_limit_bottom_max = 0.85
+        width_limit_bottom_max = 0.95
         width_limit_middle_min = 0.45
         width_limit_middle_max = 0.55
 
@@ -120,7 +120,8 @@ class LanesDetector(metaclass=ABCMeta):
     @staticmethod
     def _apply_threshold(image: np.ndarray) -> np.ndarray:
         image_binarized = np.zeros_like(image)
-        image_binarized[(image >= SX_THRESH[0]) & (image <= SX_THRESH[1])] = 1
+        image_binarized[(image >= SX_THRESH[0]) & (image <= SX_THRESH[1]) |
+                        (image >= S_THRESH[0]) & (image <= S_THRESH[1])] = 1
         return image_binarized
 
     def _apply_perspective_transform(self, image: np.ndarray) -> np.ndarray:
