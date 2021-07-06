@@ -36,6 +36,7 @@ class VideoLanesDetector(LanesDetector):
         image_transformed = self._apply_perspective_transform(image_region)
         road_lanes = self._find_road_lanes(image_transformed)
         road_lanes_reverted = self._apply_inverse_perspective_transform(road_lanes)
+        self._add_text(road_lanes_reverted)
         final_image = (np.copy(image_undistorted) + road_lanes_reverted.astype(int)) // 2
 
         # f, axarr = plt.subplots(2, 3)
