@@ -18,36 +18,17 @@ class VideoLanesDetector(LanesDetector):
         self.video_frame = None
         self.output_path = None
 
-    def build(self, video_path: str, calibration_directory: str, output_directory: str) -> None:
+    def build(self, video_path: str, calibration_directory: str, output_directory: str, record_all_layers: bool) -> None:
         Path.mkdir(Path(output_directory), exist_ok=True)
         self.output_path = os.path.join(output_directory, video_path.split("/")[-1])
+        self.record_all_layers = record_all_layers
         self._load_video(calibration_directory, video_path)
         self._calibrate_camera()
         self._get_perspective_transform()
 
     def start(self) -> None:
-        white_clip = self.video.fl_image(self._process_frame)
+        white_clip = self.video.fl_image(self._apply_pipeline)
         white_clip.write_videofile(self.output_path, audio=False)
-
-    def _process_frame(self, image: np.ndarray) -> np.ndarray:
-        image_undistorted = self._undistort_image(np.copy(image))
-        image_gradients = self._get_gradients(image_undistorted)
-        image_region = self._region_of_interest(image_gradients)
-        image_transformed = self._apply_perspective_transform(image_region)
-        road_lanes = self._find_road_lanes(image_transformed)
-        road_lanes_reverted = self._apply_inverse_perspective_transform(road_lanes)
-        self._add_text(road_lanes_reverted)
-        final_image = (np.copy(image_undistorted) + road_lanes_reverted.astype(int)) // 2
-
-        # f, axarr = plt.subplots(2, 3)
-        # axarr[0, 0].imshow(image_gradients)
-        # axarr[0, 1].imshow(image_region)
-        # axarr[0, 2].imshow(image_transformed)
-        # axarr[1, 0].imshow(road_lanes)
-        # axarr[1, 1].imshow(road_lanes_reverted)
-        # axarr[1, 2].imshow(final_image)
-        # plt.show()
-        return final_image
 
     def _load_video(self, calibration_directory: str, video_path: str):
         self.video = VideoFileClip(video_path)

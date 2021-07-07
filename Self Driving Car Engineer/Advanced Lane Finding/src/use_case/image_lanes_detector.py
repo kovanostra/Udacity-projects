@@ -15,23 +15,18 @@ class ImageLanesDetector(LanesDetector):
         self.images = []
         self.output_directory = None
 
-    def build(self, images_directory: str, calibration_directory: str, output_directory: str) -> None:
+    def build(self, images_directory: str, calibration_directory: str, output_directory: str, record_all_layers: bool) -> None:
         self.output_directory = output_directory
+        self.record_all_layers = record_all_layers
         self._load_images(calibration_directory, images_directory)
         self._calibrate_camera()
         self._get_perspective_transform()
 
     def start(self) -> None:
-        for image in self.images:
+        for image, image_name in self.images:
             self._reset_state()
-            image_undistorted = self._undistort_image(np.copy(image))
-            image_gradients = self._get_gradients(image_undistorted)
-            image_transformed = self._apply_perspective_transform(image_gradients)
-            road_lanes = self._find_road_lanes(image_transformed)
-            road_lanes_reverted = self._apply_inverse_perspective_transform(road_lanes)
-            final_image = (np.copy(image_undistorted) + road_lanes_reverted.astype(int)) // 2
-            plt.imshow(final_image)
-            plt.show()
+            final_image = self._apply_pipeline(image)
+            cv2.imwrite(os.path.join(self.output_directory, image_name), cv2.cvtColor(np.float32(final_image), cv2.COLOR_RGB2BGR))
 
     def _reset_state(self) -> None:
         self.left_parameters = None
@@ -41,19 +36,19 @@ class ImageLanesDetector(LanesDetector):
 
     def _load_images(self, calibration_directory: str, images_directory: str):
         for image_name in os.listdir(images_directory):
-            self.images.append(mpimg.imread(os.path.join(images_directory, image_name)))
+            self.images.append([mpimg.imread(os.path.join(images_directory, image_name)), image_name])
         for image_name in os.listdir(calibration_directory):
             self.calibration_images.append(mpimg.imread(os.path.join(calibration_directory, image_name)))
         get_logger().info("Loaded images from ./{}".format(images_directory))
 
     def _get_perspective_transform(self):
         source_points = np.float32(SOURCE_POINTS)
-        destination_points = np.float32([[int(self.images[0].shape[1] * DESTINATION_X_MIN_PERCENTAGE), 0],
-                                         [int(self.images[0].shape[1] * DESTINATION_X_MIN_PERCENTAGE),
-                                          self.images[0].shape[0]],
-                                         [int(self.images[0].shape[1] * DESTINATION_X_MAX_PERCENTAGE), 0],
-                                         [int(self.images[0].shape[1] * DESTINATION_X_MAX_PERCENTAGE),
-                                          self.images[0].shape[0]]])
+        destination_points = np.float32([[int(self.images[0][0].shape[1] * DESTINATION_X_MIN_PERCENTAGE), 0],
+                                         [int(self.images[0][0].shape[1] * DESTINATION_X_MIN_PERCENTAGE),
+                                          self.images[0][0].shape[0]],
+                                         [int(self.images[0][0].shape[1] * DESTINATION_X_MAX_PERCENTAGE), 0],
+                                         [int(self.images[0][0].shape[1] * DESTINATION_X_MAX_PERCENTAGE),
+                                          self.images[0][0].shape[0]]])
         self.transform_matrix = cv2.getPerspectiveTransform(source_points, destination_points)
         self.transform_matrix_inverse = cv2.getPerspectiveTransform(destination_points, source_points)
         get_logger().info("Calculated the perspective transform matrices")

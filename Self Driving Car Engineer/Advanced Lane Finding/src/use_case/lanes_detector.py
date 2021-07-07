@@ -1,8 +1,12 @@
 from abc import ABCMeta, abstractmethod
-from typing import Tuple
+from typing import Tuple, List
 
 import cv2
+import matplotlib
 import numpy as np
+
+matplotlib.use('Agg')
+from matplotlib import pyplot as plt
 
 from src.domain.lane_finder import LaneFinder
 from src.domain.logger import get_logger
@@ -20,17 +24,33 @@ class LanesDetector(metaclass=ABCMeta):
         self.right_lane = []
         self.left_fit_parameters = None
         self.right_fit_parameters = None
+        self.record_all_layers = False
         self.left_curvature = []
         self.right_curvature = []
         self.distance_from_centre = []
 
     @abstractmethod
-    def build(self, images_directory: str, calibration_directory: str, output_directory: str) -> None:
+    def build(self, images_directory: str, calibration_directory: str, output_directory: str, record_all_layers: bool) -> None:
         pass
 
     @abstractmethod
     def start(self) -> None:
         pass
+
+    def _apply_pipeline(self, image: np.ndarray) -> np.ndarray:
+        image_undistorted = self._undistort_image(np.copy(image))
+        image_gradients = self._get_gradients(image_undistorted)
+        image_region = self._region_of_interest(image_gradients)
+        image_transformed = self._apply_perspective_transform(image_region)
+        road_lanes = self._find_road_lanes(image_transformed)
+        road_lanes_reverted = self._apply_inverse_perspective_transform(road_lanes)
+        self._add_text(road_lanes_reverted)
+        final_image = (np.copy(image_undistorted) + road_lanes_reverted.astype(int)) // 2
+        if self.record_all_layers:
+            all_images = [image_gradients, image_region, image_transformed,
+                          road_lanes, road_lanes_reverted, final_image]
+            final_image = self._record_all_layers(all_images)
+        return final_image
 
     def _calibrate_camera(self, nx: int = NX, ny: int = NY):
         all_object_points = np.zeros(shape=(ny * nx, 3), dtype=np.float32)
@@ -256,3 +276,23 @@ class LanesDetector(metaclass=ABCMeta):
     @staticmethod
     def _to_gray(image: np.ndarray) -> np.ndarray:
         return cv2.cvtColor(np.copy(image), cv2.COLOR_RGB2GRAY)
+
+    @staticmethod
+    def _record_all_layers(images: List[np.ndarray]) -> np.ndarray:
+        figure, axes = plt.subplots(2, 3)
+        axes[0, 0].imshow(images[0])
+        axes[0, 0].set_title("Gradients")
+        axes[0, 1].imshow(images[1])
+        axes[0, 1].set_title("ROI")
+        axes[0, 2].imshow(images[2])
+        axes[0, 2].set_title("ROI transformed")
+        axes[1, 0].imshow(images[3])
+        axes[1, 0].set_title("Lanes transformed")
+        axes[1, 1].imshow(images[4])
+        axes[1, 1].set_title("Lanes original")
+        axes[1, 2].imshow(images[5])
+        axes[1, 2].set_title("Final image")
+        figure.canvas.draw()
+        data = np.fromstring(figure.canvas.tostring_rgb(), dtype=np.uint8)
+        data = data.reshape(figure.canvas.get_width_height()[::-1] + (3,))
+        return data
