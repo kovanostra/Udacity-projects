@@ -15,12 +15,10 @@ class LaneFinder:
         self.current = self.base
         self.nonzero_y, self.nonzero_x = self._set_nonzero()
         self.window_height = self._set_window_height()
-        self.windows = []
         self.lane_indices = None
 
     def reset_state_with(self, fit_parameters: Optional[np.ndarray]) -> None:
         self.fit_parameters = fit_parameters
-        self.windows = []
 
     def search_lane_points(self) -> Lane:
         if self.fit_parameters is None:
@@ -31,24 +29,19 @@ class LaneFinder:
         return Lane(x=self.nonzero_x[self.lane_indices], y=self.nonzero_y[self.lane_indices])
 
     def _apply_search_on_previous_frame_results(self) -> List[int]:
-        return ((self.nonzero_x > (
-                self.fit_parameters[0] * (self.nonzero_y ** 2) + self.fit_parameters[1] * self.nonzero_y +
-                self.fit_parameters[2] - MARGIN))
-                & (self.nonzero_x < (
-                        self.fit_parameters[0] * (self.nonzero_y ** 2) + self.fit_parameters[1] * self.nonzero_y +
-                        self.fit_parameters[2] + MARGIN)))
+        y_fitted_line = self._get_y_fitted_line()
+        return (self.nonzero_x > (y_fitted_line - MARGIN)) & (self.nonzero_x < (y_fitted_line + MARGIN))
+
+    def _get_y_fitted_line(self):
+        a, b, c = self.fit_parameters
+        return a * (self.nonzero_y ** 2) + b * self.nonzero_y + c
 
     def _apply_sliding_window_search(self) -> List:
         all_lane_indices = []
         for window_number in range(NUMBER_OF_WINDOWS):
             current_window = self._get_current_window(MARGIN, window_number)
-            self.windows.append(current_window)
-            image_window = self.image[current_window.y_low:current_window.y_high,
-                           current_window.x_low:current_window.x_high]
-
             good_indices = self._get_nonzero_indices_within_the_current_window(current_window)
             all_lane_indices.append(good_indices)
-            # self._recenter_next_window(current_window, image_window)
         return all_lane_indices
 
     def _recenter_next_window(self, current_window: Window, image_window: np.ndarray) -> None:
