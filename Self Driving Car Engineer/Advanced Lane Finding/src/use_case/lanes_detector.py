@@ -1,10 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, List
+from typing import Tuple
 
 import cv2
 import numpy as np
 
-from src.domain.lane import Lane
 from src.domain.lane_finder import LaneFinder
 from src.domain.logger import get_logger
 from src.infrastructure.parameters import *
@@ -21,8 +20,9 @@ class LanesDetector(metaclass=ABCMeta):
         self.right_lane = []
         self.left_fit_parameters = None
         self.right_fit_parameters = None
-        self.left_curvature = None
-        self.right_curvature = None
+        self.left_curvature = []
+        self.right_curvature = []
+        self.distance_from_centre = []
 
     @abstractmethod
     def build(self, images_directory: str, calibration_directory: str, output_directory: str) -> None:
@@ -154,9 +154,20 @@ class LanesDetector(metaclass=ABCMeta):
         return output_image
 
     def _add_text(self, image: np.ndarray) -> None:
-        cv2.putText(image, "Radius of left curvature {}m".format(self.left_curvature), (10, 60),
+        if len(self.left_curvature) > 2 * LANES_MEMORY:
+            self.left_curvature.pop(0)
+
+        if len(self.right_curvature) > 2 * LANES_MEMORY:
+            self.right_curvature.pop(0)
+
+        if len(self.distance_from_centre) > 2 * LANES_MEMORY:
+            self.distance_from_centre.pop(0)
+        cv2.putText(image, "Radius of left curvature {}m".format(round(np.average(self.left_curvature))), (10, 60),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
-        cv2.putText(image, "Radius of right curvature {}m".format(self.right_curvature), (10, 100),
+        cv2.putText(image, "Radius of right curvature {}m".format(round(np.average(self.right_curvature))), (10, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
+        cv2.putText(image, "Distance from centre {}m".format(round(np.average(self.distance_from_centre), 2)),
+                    (10, 140),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
 
     def _find_lane_pixels(self, image: np.ndarray) -> None:
@@ -165,28 +176,31 @@ class LanesDetector(metaclass=ABCMeta):
         left_lane_finder = LaneFinder(image=image,
                                       base=np.argmax(histogram[:histogram_midpoint]),
                                       fit_parameters=self.left_fit_parameters)
-        current_lane_points = left_lane_finder.search_lane_points()
-        if any(current_lane_points.x > histogram_midpoint):
+        current_left_lane_points = left_lane_finder.search_lane_points()
+        if any(current_left_lane_points.x > histogram_midpoint):
             left_lane_finder = LaneFinder(image=image,
                                           base=np.argmax(histogram[:histogram_midpoint]),
                                           fit_parameters=None)
-            current_lane_points = left_lane_finder.search_lane_points()
-            self.left_lane = self.left_lane[-3:-1]
-        if not any(current_lane_points.x > histogram_midpoint):
-            self.left_lane.append(current_lane_points)
+            current_left_lane_points = left_lane_finder.search_lane_points()
+            self.left_lane = self.left_lane[-4:-1]
+        if not any(current_left_lane_points.x > histogram_midpoint):
+            self.left_lane.append(current_left_lane_points)
         right_lane_finder = LaneFinder(image=image,
                                        base=np.argmax(histogram[histogram_midpoint:]) + histogram_midpoint,
                                        fit_parameters=self.right_fit_parameters)
-        current_lane_points = right_lane_finder.search_lane_points()
+        current_right_lane_points = right_lane_finder.search_lane_points()
 
-        if any(current_lane_points.x < histogram_midpoint):
+        if any(current_right_lane_points.x < histogram_midpoint):
             left_lane_finder = LaneFinder(image=image,
                                           base=np.argmax(histogram[histogram_midpoint:]) + histogram_midpoint,
                                           fit_parameters=None)
-            current_lane_points = left_lane_finder.search_lane_points()
-            self.right_lane = self.right_lane[-3:-1]
-        if not any(current_lane_points.x < histogram_midpoint):
-            self.right_lane.append(current_lane_points)
+            current_right_lane_points = left_lane_finder.search_lane_points()
+            self.right_lane = self.right_lane[-4:-1]
+        if not any(current_right_lane_points.x < histogram_midpoint):
+            self.right_lane.append(current_right_lane_points)
+        if len(current_right_lane_points.x) > 0 and len(current_left_lane_points.x) > 0:
+            self.distance_from_centre.append((np.average(current_right_lane_points.x) - np.average(
+                current_left_lane_points.x)) * X_TO_METERS_PER_PIXEL - ((image.shape[1]/2) * X_TO_METERS_PER_PIXEL))
 
     def _fit_polynomial(self, image: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         if len(self.left_lane) > LANES_MEMORY:
@@ -220,12 +234,12 @@ class LanesDetector(metaclass=ABCMeta):
         # We'll choose the maximum y-value, corresponding to the bottom of the image
         y_eval = np.max(polynomial_y)
 
-        self.left_curvature = round(
+        self.left_curvature.append(round(
             ((1 + (2 * left_fit_cr[0] * y_eval * Y_TO_METERS_PER_PIXEL + left_fit_cr[1]) ** 2) ** (
-                    3 / 2)) / (abs(2 * left_fit_cr[0])))
-        self.right_curvature = round(
+                    3 / 2)) / (abs(2 * left_fit_cr[0]))))
+        self.right_curvature.append(round(
             ((1 + (2 * right_fit_cr[0] * y_eval * Y_TO_METERS_PER_PIXEL + right_fit_cr[1]) ** 2) ** (
-                    3 / 2)) / (abs(2 * right_fit_cr[0])))
+                    3 / 2)) / (abs(2 * right_fit_cr[0]))))
 
         return left_polynomial_x_filtered, right_polynomial_x_filtered
 
