@@ -19,16 +19,21 @@ class VideoLanesDetector(LanesDetector):
         self.output_path = None
 
     def build(self, video_path: str, calibration_directory: str, output_directory: str, record_all_layers: bool) -> None:
-        Path.mkdir(Path(output_directory), exist_ok=True)
-        self.output_path = os.path.join(output_directory, video_path.split("/")[-1])
         self.record_all_layers = record_all_layers
+        self._set_output_path(output_directory, video_path)
         self._load_video(calibration_directory, video_path)
         self._calibrate_camera()
         self._get_perspective_transform()
 
     def start(self) -> None:
+        get_logger().info("Started processing video {}".format(self.output_path.split("/")[-1]))
         white_clip = self.video.fl_image(self._apply_pipeline)
         white_clip.write_videofile(self.output_path, audio=False)
+        get_logger().info("Successfully saved video at {}".format(self.output_path))
+
+    def _set_output_path(self, output_directory: str, video_path: str) -> None:
+        Path.mkdir(Path(output_directory), exist_ok=True)
+        self.output_path = os.path.join(output_directory, video_path.split("/")[-1])
 
     def _load_video(self, calibration_directory: str, video_path: str):
         self.video = VideoFileClip(video_path)
@@ -46,12 +51,13 @@ class VideoLanesDetector(LanesDetector):
 
     def _get_perspective_transform(self):
         source_points = np.float32(SOURCE_POINTS)
-        destination_points = np.float32([[int(self.video_frame.shape[1] * DESTINATION_X_MIN_PERCENTAGE), 0],
-                                         [int(self.video_frame.shape[1] * DESTINATION_X_MIN_PERCENTAGE),
-                                          self.video_frame.shape[0]],
-                                         [int(self.video_frame.shape[1] * DESTINATION_X_MAX_PERCENTAGE), 0],
-                                         [int(self.video_frame.shape[1] * DESTINATION_X_MAX_PERCENTAGE),
-                                          self.video_frame.shape[0]]])
+        video_frame_height, video_frame_width, _ = self.video_frame.shape
+        x_min_pixel = int(video_frame_width * DESTINATION_X_MIN_PERCENTAGE)
+        x_max_pixel = int(video_frame_width * DESTINATION_X_MAX_PERCENTAGE)
+        destination_points = np.float32([[x_min_pixel, 0],
+                                         [x_min_pixel, video_frame_height],
+                                         [x_max_pixel, 0],
+                                         [x_max_pixel, video_frame_height]])
         self.transform_matrix = cv2.getPerspectiveTransform(source_points, destination_points)
         self.transform_matrix_inverse = cv2.getPerspectiveTransform(destination_points, source_points)
         get_logger().info("Calculated the perspective transform matrices")

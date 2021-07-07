@@ -15,22 +15,26 @@ from src.infrastructure.parameters import *
 
 class LanesDetector(metaclass=ABCMeta):
     def __init__(self):
+        self.record_all_layers = False
         self.distortion_coefficients = None
-        self.transform_matrix = None
         self.calibration_images = []
         self.camera_matrix = None
+        self.transform_matrix = None
         self.transform_matrix_inverse = None
         self.left_lane = []
         self.right_lane = []
         self.left_fit_parameters = None
         self.right_fit_parameters = None
-        self.record_all_layers = False
         self.left_curvature = []
         self.right_curvature = []
         self.distance_from_centre = []
 
     @abstractmethod
-    def build(self, images_directory: str, calibration_directory: str, output_directory: str, record_all_layers: bool) -> None:
+    def build(self,
+              source_path: str,
+              calibration_directory: str,
+              output_directory: str,
+              record_all_layers: bool) -> None:
         pass
 
     @abstractmethod
@@ -38,16 +42,16 @@ class LanesDetector(metaclass=ABCMeta):
         pass
 
     def _apply_pipeline(self, image: np.ndarray) -> np.ndarray:
-        image_undistorted = self._undistort_image(np.copy(image))
+        image_undistorted = self._undistort_image(image)
         image_gradients = self._get_gradients(image_undistorted)
-        image_region = self._region_of_interest(image_gradients)
-        image_transformed = self._apply_perspective_transform(image_region)
+        image_region_of_interest = self._region_of_interest(image_gradients)
+        image_transformed = self._apply_perspective_transform(image_region_of_interest)
         road_lanes = self._find_road_lanes(image_transformed)
         road_lanes_reverted = self._apply_inverse_perspective_transform(road_lanes)
-        self._add_text(road_lanes_reverted)
-        final_image = (np.copy(image_undistorted) + road_lanes_reverted.astype(int)) // 2
+        self._add_text_to_image(road_lanes_reverted)
+        final_image = self._add_lanes_to_undistorted_image(image_undistorted, road_lanes_reverted)
         if self.record_all_layers:
-            all_images = [image_gradients, image_region, image_transformed,
+            all_images = [image_gradients, image_region_of_interest, image_transformed,
                           road_lanes, road_lanes_reverted, final_image]
             final_image = self._record_all_layers(all_images)
         return final_image
@@ -72,8 +76,9 @@ class LanesDetector(metaclass=ABCMeta):
                                                                                             None)
             get_logger().info("Calibration parameters calculated")
         else:
-            raise RuntimeError("Couldn't detect correctly the chessboard corners. "
+            get_logger().error("Couldn't detect correctly the chessboard corners. "
                                "Impossible to calculate calibration parameters.")
+            raise RuntimeError
 
     def _undistort_image(self, image: np.ndarray) -> np.ndarray:
         return cv2.undistort(image,
@@ -83,53 +88,34 @@ class LanesDetector(metaclass=ABCMeta):
                              self.camera_matrix)
 
     def _region_of_interest(self, image: np.ndarray) -> np.ndarray:
-        """
-        Applies an image mask.
-
-        Only keeps the region of the image defined by the polygon
-        formed from `vertices`. The rest of the image is set to black.
-        `vertices` should be a numpy array of integer points.
-        """
-        # defining a blank mask to start with
         mask = np.zeros_like(image)
         vertices = self._get_vertices(image)
-
-        # defining a 3 channel or 1 channel color to fill the mask with depending on the input image
         if len(image.shape) > 2:
-            channel_count = image.shape[2]  # i.e. 3 or 4 depending on your image
+            channel_count = image.shape[2]
             ignore_mask_color = (255,) * channel_count
         else:
             ignore_mask_color = 255
-
-        # filling pixels inside the polygon defined by "vertices" with the fill color
         cv2.fillPoly(mask, vertices, ignore_mask_color)
-
-        # returning the image only where mask pixels are nonzero
         masked_image = cv2.bitwise_and(image, mask)
         return masked_image
 
     @staticmethod
     def _get_vertices(image: np.ndarray) -> np.ndarray:
-        height_limit = 0.6
-        width_limit_bottom_min = 0.2
-        width_limit_bottom_max = 0.95
-        width_limit_middle_min = 0.45
-        width_limit_middle_max = 0.55
-
-        return np.array([[(int(image.shape[0] * width_limit_bottom_min), image.shape[0]),
-                          (int(image.shape[1] * width_limit_middle_min), int(image.shape[0] * height_limit)),
-                          (int(image.shape[1] * width_limit_middle_max), int(image.shape[0] * height_limit)),
-                          (int(image.shape[1] * width_limit_bottom_max), image.shape[0])]], dtype=np.int32)
+        image_height, image_width = image.shape
+        roi_x_bottom_min_pixel = int(image_width * ROI_WIDTH_LIMIT_BOTTOM_MIN)
+        roi_x_bottom_max_pixel = int(image_width * ROI_WIDTH_LIMIT_BOTTOM_MAX)
+        roi_x_top_min_pixel = int(image_width * ROI_WIDTH_LIMIT_TOP_MIN)
+        poi_x_top_max_pixel = int(image_width * ROI_WIDTH_LIMIT_TOP_MAX)
+        roi_y_top_pixel = int(image_height * ROI_HEIGHT_LIMIT)
+        return np.array([[(roi_x_bottom_min_pixel, image_height),
+                          (roi_x_top_min_pixel, roi_y_top_pixel),
+                          (poi_x_top_max_pixel, roi_y_top_pixel),
+                          (roi_x_bottom_max_pixel, image_height)]], dtype=np.int32)
 
     def _get_gradients(self, image: np.ndarray) -> np.ndarray:
-        l_channel = self._to_hls(image)[:, :, 1]
         s_channel = self._to_hls(image)[:, :, 2]
         scaled_gradient_x = self._get_scaled_gradient_x(s_channel)
         sobel_binary = self._apply_threshold(scaled_gradient_x)
-        # s_binary = np.zeros_like(s_channel)
-        # s_binary[(s_channel >= S_THRESH[0]) & (s_channel <= S_THRESH[1])] = 1
-        # Stack each channel
-        # color_binary = (sobel_binary + s_binary) // 2
         get_logger().info("Computed image gradients and binarized image")
         return sobel_binary
 
@@ -142,18 +128,18 @@ class LanesDetector(metaclass=ABCMeta):
     @staticmethod
     def _apply_threshold(image: np.ndarray) -> np.ndarray:
         image_binarized = np.zeros_like(image)
-        image_binarized[(image >= SX_THRESH[0]) & (image <= SX_THRESH[1]) |
-                        (image >= S_THRESH[0]) & (image <= S_THRESH[1])] = 1
+        image_binarized[(image >= MAX_THRESHOLD[0]) & (image <= MAX_THRESHOLD[1]) |
+                        (image >= MIN_THRESHOLD[0]) & (image <= MIN_THRESHOLD[1])] = 1
         return image_binarized
 
     def _apply_perspective_transform(self, image: np.ndarray) -> np.ndarray:
-        img_size = (image.shape[1], image.shape[0])
-        image_transformed = cv2.warpPerspective(image, self.transform_matrix, img_size)
+        image_size = (image.shape[1], image.shape[0])
+        image_transformed = cv2.warpPerspective(image, self.transform_matrix, image_size)
         return image_transformed
 
     def _apply_inverse_perspective_transform(self, image: np.ndarray) -> np.ndarray:
-        img_size = (image.shape[1], image.shape[0])
-        image_transformed = cv2.warpPerspective(image, self.transform_matrix_inverse, img_size)
+        image_size = (image.shape[1], image.shape[0])
+        image_transformed = cv2.warpPerspective(image, self.transform_matrix_inverse, image_size)
         return image_transformed
 
     def _find_road_lanes(self, image: np.ndarray) -> np.ndarray:
@@ -162,57 +148,30 @@ class LanesDetector(metaclass=ABCMeta):
         output_image = self._draw_lanes(image, left_fit_x, right_fit_x)
         return output_image
 
-    @staticmethod
-    def _draw_lanes(image: np.ndarray, left_fit_x: np.ndarray, right_fit_x: np.ndarray) -> np.ndarray:
-        output_image = np.zeros(shape=(image.shape[0], image.shape[1], 3))
-        left_y = np.linspace(0, len(left_fit_x) - 1, len(left_fit_x)).astype(int)
-        right_y = np.linspace(0, len(right_fit_x) - 1, len(right_fit_x)).astype(int)
-        lane_area_points = list(zip(left_fit_x, left_y)) + list(zip(right_fit_x, right_y))
-        lane_area_points_sorted = np.array(sorted(lane_area_points, key=lambda x: x[1]), dtype=np.int32).reshape(
-            (-1, 1, 2))
-        cv2.fillPoly(output_image, [lane_area_points_sorted], GREEN)
-        return output_image
-
-    def _add_text(self, image: np.ndarray) -> None:
-        if len(self.left_curvature) > 2 * LANES_MEMORY:
-            self.left_curvature.pop(0)
-
-        if len(self.right_curvature) > 2 * LANES_MEMORY:
-            self.right_curvature.pop(0)
-
-        if len(self.distance_from_centre) > 2 * LANES_MEMORY:
-            self.distance_from_centre.pop(0)
-        cv2.putText(image, "Radius of left curvature {}m".format(round(np.average(self.left_curvature))), (10, 60),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
-        cv2.putText(image, "Radius of right curvature {}m".format(round(np.average(self.right_curvature))), (10, 100),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
-        cv2.putText(image, "Distance from centre {}m".format(round(np.average(self.distance_from_centre), 2)),
-                    (10, 140),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
-
     def _find_lane_pixels(self, image: np.ndarray) -> None:
         histogram = np.sum(image[image.shape[0] // 2:, :], axis=0)
         histogram_midpoint = np.int(histogram.shape[0] // 2)
+        left_highest_histogram_point = np.argmax(histogram[:histogram_midpoint])
+        right_highest_histogram_point = np.argmax(histogram[histogram_midpoint:]) + histogram_midpoint
+
         left_lane_finder = LaneFinder(image=image,
-                                      base=np.argmax(histogram[:histogram_midpoint]),
+                                      base=left_highest_histogram_point,
                                       fit_parameters=self.left_fit_parameters)
         current_left_lane_points = left_lane_finder.search_lane_points()
         if any(current_left_lane_points.x > histogram_midpoint):
-            left_lane_finder = LaneFinder(image=image,
-                                          base=np.argmax(histogram[:histogram_midpoint]),
-                                          fit_parameters=None)
+            left_lane_finder.reset_state_with(fit_parameters=None)
             current_left_lane_points = left_lane_finder.search_lane_points()
             self.left_lane = self.left_lane[-4:-1]
         if not any(current_left_lane_points.x > histogram_midpoint):
             self.left_lane.append(current_left_lane_points)
         right_lane_finder = LaneFinder(image=image,
-                                       base=np.argmax(histogram[histogram_midpoint:]) + histogram_midpoint,
+                                       base=right_highest_histogram_point,
                                        fit_parameters=self.right_fit_parameters)
         current_right_lane_points = right_lane_finder.search_lane_points()
 
         if any(current_right_lane_points.x < histogram_midpoint):
             left_lane_finder = LaneFinder(image=image,
-                                          base=np.argmax(histogram[histogram_midpoint:]) + histogram_midpoint,
+                                          base=right_highest_histogram_point,
                                           fit_parameters=None)
             current_right_lane_points = left_lane_finder.search_lane_points()
             self.right_lane = self.right_lane[-4:-1]
@@ -220,7 +179,7 @@ class LanesDetector(metaclass=ABCMeta):
             self.right_lane.append(current_right_lane_points)
         if len(current_right_lane_points.x) > 0 and len(current_left_lane_points.x) > 0:
             self.distance_from_centre.append((np.average(current_right_lane_points.x) - np.average(
-                current_left_lane_points.x)) * X_TO_METERS_PER_PIXEL - ((image.shape[1]/2) * X_TO_METERS_PER_PIXEL))
+                current_left_lane_points.x)) * X_TO_METERS_PER_PIXEL - ((image.shape[1] / 2) * X_TO_METERS_PER_PIXEL))
 
     def _fit_polynomial(self, image: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         if len(self.left_lane) > LANES_MEMORY:
@@ -264,10 +223,38 @@ class LanesDetector(metaclass=ABCMeta):
         return left_polynomial_x_filtered, right_polynomial_x_filtered
 
     @staticmethod
+    def _draw_lanes(image: np.ndarray, left_fit_x: np.ndarray, right_fit_x: np.ndarray) -> np.ndarray:
+        output_image = np.zeros(shape=(image.shape[0], image.shape[1], 3))
+        left_y = np.linspace(0, len(left_fit_x) - 1, len(left_fit_x)).astype(int)
+        right_y = np.linspace(0, len(right_fit_x) - 1, len(right_fit_x)).astype(int)
+        lane_area_points = list(zip(left_fit_x, left_y)) + list(zip(right_fit_x, right_y))
+        lane_area_points_sorted = np.array(sorted(lane_area_points, key=lambda x: x[1]), dtype=np.int32).reshape(
+            (-1, 1, 2))
+        cv2.fillPoly(output_image, [lane_area_points_sorted], GREEN)
+        return output_image
+
+    @staticmethod
     def _get_polynomial_x_coordinates(parameters: tuple, y: np.ndarray) -> np.ndarray:
         a, b, c = parameters
         x = (a * y ** 2) + (b * y) + c
         return x
+
+    def _add_text_to_image(self, image: np.ndarray) -> None:
+        if len(self.left_curvature) > 2 * LANES_MEMORY:
+            self.left_curvature.pop(0)
+
+        if len(self.right_curvature) > 2 * LANES_MEMORY:
+            self.right_curvature.pop(0)
+
+        if len(self.distance_from_centre) > 2 * LANES_MEMORY:
+            self.distance_from_centre.pop(0)
+        cv2.putText(image, "Radius of left curvature {}m".format(round(np.average(self.left_curvature))), (10, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
+        cv2.putText(image, "Radius of right curvature {}m".format(round(np.average(self.right_curvature))), (10, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
+        cv2.putText(image, "Distance from centre {}m".format(round(np.average(self.distance_from_centre), 2)),
+                    (10, 140),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
 
     @staticmethod
     def _to_hls(image: np.ndarray) -> np.ndarray:
@@ -296,3 +283,7 @@ class LanesDetector(metaclass=ABCMeta):
         data = np.fromstring(figure.canvas.tostring_rgb(), dtype=np.uint8)
         data = data.reshape(figure.canvas.get_width_height()[::-1] + (3,))
         return data
+
+    @staticmethod
+    def _add_lanes_to_undistorted_image(image_undistorted: np.ndarray, road_lanes_reverted: np.ndarray) -> np.ndarray:
+        return (image_undistorted + road_lanes_reverted.astype(int)) // 2

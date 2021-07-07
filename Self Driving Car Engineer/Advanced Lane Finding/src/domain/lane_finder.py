@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 import numpy as np
 
@@ -17,6 +17,10 @@ class LaneFinder:
         self.window_height = self._set_window_height()
         self.windows = []
         self.lane_indices = None
+
+    def reset_state_with(self, fit_parameters: Optional[np.ndarray]) -> None:
+        self.fit_parameters = fit_parameters
+        self.windows = []
 
     def search_lane_points(self) -> Lane:
         if self.fit_parameters is None:

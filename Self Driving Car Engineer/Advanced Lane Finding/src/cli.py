@@ -18,8 +18,9 @@ def main(debug):
 @click.option("--images_directory", type=str)
 @click.option("--calibration_directory", type=str)
 @click.option("--output_directory", type=str)
-@click.option("--record_all_layers", type=click.Choice(["True", "False"]))
-def detect_images(images_directory: str, calibration_directory: str, output_directory: str, record_all_layers: str) -> None:
+@click.option("--record_all_layers", type=click.Choice(["True", "False"]), default="False")
+def detect_images(images_directory: str, calibration_directory: str, output_directory: str,
+                  record_all_layers: str) -> None:
     detector = ImageLanesDetector()
     detector.build(images_directory, calibration_directory, output_directory, eval(record_all_layers))
     detector.start()
@@ -29,7 +30,7 @@ def detect_images(images_directory: str, calibration_directory: str, output_dire
 @click.option("--video_path", type=str)
 @click.option("--calibration_directory", type=str)
 @click.option("--output_directory", type=str)
-@click.option("--record_all_layers", type=click.Choice(["True", "False"]))
+@click.option("--record_all_layers", type=click.Choice(["True", "False"]), default="False")
 def detect_video(video_path: str, calibration_directory: str, output_directory: str, record_all_layers: str) -> None:
     detector = VideoLanesDetector()
     detector.build(video_path, calibration_directory, output_directory, eval(record_all_layers))
