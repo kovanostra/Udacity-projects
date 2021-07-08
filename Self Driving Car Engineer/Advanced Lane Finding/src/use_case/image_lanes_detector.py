@@ -7,7 +7,9 @@ from matplotlib import image as mpimg
 from src.domain.frame_binarizer import FrameBinarizer
 from src.domain.frame_layers_recorder import FrameLayersRecorder
 from src.domain.frame_transformer import FrameTransformer
+from src.domain.frame_visualizer import FrameVisualizer
 from src.domain.lane_finder import LaneFinder
+from src.domain.line_fitter import LineFitter
 from src.domain.logger import get_logger
 from src.infrastructure.parameters import LEFT, RIGHT
 from src.use_case.lanes_detector import LanesDetector
@@ -18,8 +20,15 @@ class ImageLanesDetector(LanesDetector):
                  frame_transformer: FrameTransformer,
                  frame_binarizer: FrameBinarizer,
                  lane_finder: LaneFinder,
+                 line_fitter: LineFitter,
+                 frame_visualizer: FrameVisualizer,
                  frame_layers_recorder: FrameLayersRecorder) -> None:
-        super().__init__(frame_transformer, frame_binarizer, lane_finder, frame_layers_recorder)
+        super().__init__(frame_transformer,
+                         frame_binarizer,
+                         lane_finder,
+                         line_fitter,
+                         frame_visualizer,
+                         frame_layers_recorder)
         self.images = []
         self.output_directory = None
 

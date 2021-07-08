@@ -55,9 +55,9 @@ LEFT = "left"
 
 FINAL = "final"
 
-ROAD_LANES_REVERTED = "road_lanes_reverted"
+LANES_REVERTED = "lanes_reverted"
 
-ROAD_LANES = "road_lanes"
+LANES = "lanes"
 
 ROI = "region_of_interest"
 
@@ -66,3 +66,7 @@ BINARIZED = "binarized"
 UNDISTORTED = "undistorted"
 
 TRANSFORMED = "transformed"
+
+X = "x"
+
+Y = "y"

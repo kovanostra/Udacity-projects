@@ -1,4 +1,4 @@
-from typing import Tuple, List, Optional, Dict
+from typing import Tuple, List, Dict
 
 import numpy as np
 
@@ -16,16 +16,18 @@ class LaneFinder:
         self.nonzero_y, self.nonzero_x = None, None
         self.window_height = None
         self.lane_indices = None
+        self.distance_from_centre = []
         self.lanes = {LEFT: [], RIGHT: []}
 
     def detect_lanes(self, frame: np.ndarray, fit_parameters: Dict[str, tuple]) -> None:
+        self._ensure_memory_time_span()
         self.frame = frame
         self.nonzero_y, self.nonzero_x = self._set_nonzero()
         self.window_height = self._set_window_height()
         self.histogram = np.sum(frame[frame.shape[0] // 2:, :], axis=0)
         self.histogram_midpoint = np.int(self.histogram.shape[0] // 2)
         self._find_lane_pixels(fit_parameters)
-        self._ensure_memory_time_span()
+        self._update_distance_from_centre(frame)
 
     def _find_lane_pixels(self, fit_parameters: Dict[str, tuple]) -> None:
         self._search_for_left_lane_points(fit_parameters[LEFT])
@@ -65,7 +67,7 @@ class LaneFinder:
             self.lane_indices = self._apply_search_on_previous_frame_results(fit_parameters)
         return Lane(x=self.nonzero_x[self.lane_indices], y=self.nonzero_y[self.lane_indices])
 
-    def _apply_search_on_previous_frame_results(self, fit_parameters: Tuple[float, float, float]) -> List[int]:
+    def _apply_search_on_previous_frame_results(self, fit_parameters: Tuple[float, float, float]) -> List[bool]:
         y_fitted_line = self._get_y_fitted_line(fit_parameters)
         return (self.nonzero_x > (y_fitted_line - MARGIN)) & (self.nonzero_x < (y_fitted_line + MARGIN))
 
@@ -89,10 +91,10 @@ class LaneFinder:
         return (self._get_nonzero_indices_in_y_dimension(current_window) &
                 self._get_nonzero_indices_in_x_dimension(current_window)).nonzero()[0]
 
-    def _get_nonzero_indices_in_y_dimension(self, current_window: Window) -> np.ndarray:
+    def _get_nonzero_indices_in_y_dimension(self, current_window: Window) -> List[bool]:
         return (self.nonzero_y >= current_window.y_low) & (self.nonzero_y < current_window.y_high)
 
-    def _get_nonzero_indices_in_x_dimension(self, current_window: Window) -> np.ndarray:
+    def _get_nonzero_indices_in_x_dimension(self, current_window: Window) -> List[bool]:
         return (self.nonzero_x >= current_window.x_low) & (self.nonzero_x < current_window.x_high)
 
     def _get_current_window(self, margin: int, window_number: int) -> Window:
@@ -108,7 +110,19 @@ class LaneFinder:
         return frame_nonzero[0], frame_nonzero[1]
 
     def _ensure_memory_time_span(self) -> None:
-        variables_with_memory = [self.lanes[LEFT], self.lanes[RIGHT]]
+        variables_with_memory = [self.lanes[LEFT], self.lanes[RIGHT], self.distance_from_centre]
         for variable in variables_with_memory:
             if len(variable) > MEMORY_TIME_SPAN:
                 variable.pop(0)
+
+    def _update_distance_from_centre(self, frame: np.ndarray) -> None:
+        current_left_lane = self.lanes[LEFT][-1]
+        current_right_lane = self.lanes[RIGHT][-1]
+        if self._both_lanes_have_detected_points(current_left_lane, current_right_lane):
+            lanes_centre = (np.average(current_right_lane.x) - np.average(current_left_lane.x))
+            frame_centre = (frame.shape[1] / 2)
+            self.distance_from_centre.append((lanes_centre - frame_centre) * X_TO_METERS_PER_PIXEL)
+
+    @staticmethod
+    def _both_lanes_have_detected_points(current_left_lane_points: Lane, current_right_lane_points: Lane) -> bool:
+        return len(current_right_lane_points.x) > 0 and len(current_left_lane_points.x)
