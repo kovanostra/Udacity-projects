@@ -48,3 +48,21 @@ ROI_WIDTH_LIMIT_BOTTOM_MAX = 0.95
 ROI_WIDTH_LIMIT_TOP_MIN = 0.45
 
 ROI_WIDTH_LIMIT_TOP_MAX = 0.55
+
+RIGHT = "right"
+
+LEFT = "left"
+
+FINAL = "final"
+
+ROAD_LANES_REVERTED = "road_lanes_reverted"
+
+ROAD_LANES = "road_lanes"
+
+ROI = "region_of_interest"
+
+BINARIZED = "binarized"
+
+UNDISTORTED = "undistorted"
+
+TRANSFORMED = "transformed"

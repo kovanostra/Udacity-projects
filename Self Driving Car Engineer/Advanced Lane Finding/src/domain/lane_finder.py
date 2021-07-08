@@ -1,39 +1,76 @@
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict
 
 import numpy as np
 
 from src.domain.lane import Lane
 from src.domain.window import Window
-from src.infrastructure.parameters import NUMBER_OF_WINDOWS, MARGIN, MIN_PIXELS
+from src.infrastructure.parameters import *
 
 
 class LaneFinder:
-    def __init__(self, frame: np.ndarray, base: np.ndarray, fit_parameters: np.ndarray) -> None:
+    def __init__(self) -> None:
+        self.frame = None
+        self.histogram = None
+        self.histogram_midpoint = None
+        self.current = None
+        self.nonzero_y, self.nonzero_x = None, None
+        self.window_height = None
+        self.lane_indices = None
+        self.lanes = {LEFT: [], RIGHT: []}
+
+    def detect_lanes(self, frame: np.ndarray, fit_parameters: Dict[str, tuple]) -> None:
         self.frame = frame
-        self.base = base
-        self.fit_parameters = fit_parameters
-        self.current = self.base
         self.nonzero_y, self.nonzero_x = self._set_nonzero()
         self.window_height = self._set_window_height()
-        self.lane_indices = None
+        self.histogram = np.sum(frame[frame.shape[0] // 2:, :], axis=0)
+        self.histogram_midpoint = np.int(self.histogram.shape[0] // 2)
+        self._find_lane_pixels(fit_parameters)
+        self._ensure_memory_time_span()
 
-    def reset_state_with(self, fit_parameters: Optional[np.ndarray]) -> None:
-        self.fit_parameters = fit_parameters
+    def _find_lane_pixels(self, fit_parameters: Dict[str, tuple]) -> None:
+        self._search_for_left_lane_points(fit_parameters[LEFT])
+        self._search_for_right_lane_points(fit_parameters[RIGHT])
 
-    def search_lane_points(self) -> Lane:
-        if self.fit_parameters is None:
+    def _search_for_left_lane_points(self, fit_parameters: Tuple[float, float, float]) -> None:
+        self.current = np.argmax(self.histogram[:self.histogram_midpoint])
+        if len(fit_parameters) > 0:
+            histogram_search = False
+        else:
+            histogram_search = True
+        current_lane = self._search_lane_points(histogram_search=histogram_search, fit_parameters=fit_parameters)
+        if any(current_lane.x > self.histogram_midpoint):
+            current_lane = self._search_lane_points(histogram_search=True, fit_parameters=fit_parameters)
+            self.lanes[LEFT] = self.lanes[LEFT][-FORGET_FRAMES:-1]
+        if not any(current_lane.x > self.histogram_midpoint):
+            self.lanes[LEFT].append(current_lane)
+
+    def _search_for_right_lane_points(self, fit_parameters: Tuple[float, float, float]) -> None:
+        self.current = np.argmax(self.histogram[self.histogram_midpoint:]) + self.histogram_midpoint
+        if len(fit_parameters) > 0:
+            histogram_search = False
+        else:
+            histogram_search = True
+        current_lane = self._search_lane_points(histogram_search=histogram_search, fit_parameters=fit_parameters)
+        if any(current_lane.x < self.histogram_midpoint):
+            current_lane = self._search_lane_points(histogram_search=True, fit_parameters=fit_parameters)
+            self.lanes[RIGHT] = self.lanes[RIGHT][-FORGET_FRAMES:-1]
+        if not any(current_lane.x < self.histogram_midpoint):
+            self.lanes[RIGHT].append(current_lane)
+
+    def _search_lane_points(self, histogram_search: bool, fit_parameters: Tuple[float, float, float]) -> Lane:
+        if histogram_search:
             all_lane_indices = self._apply_sliding_window_search()
             self.lane_indices = np.concatenate(all_lane_indices)
         else:
-            self.lane_indices = self._apply_search_on_previous_frame_results()
+            self.lane_indices = self._apply_search_on_previous_frame_results(fit_parameters)
         return Lane(x=self.nonzero_x[self.lane_indices], y=self.nonzero_y[self.lane_indices])
 
-    def _apply_search_on_previous_frame_results(self) -> List[int]:
-        y_fitted_line = self._get_y_fitted_line()
+    def _apply_search_on_previous_frame_results(self, fit_parameters: Tuple[float, float, float]) -> List[int]:
+        y_fitted_line = self._get_y_fitted_line(fit_parameters)
         return (self.nonzero_x > (y_fitted_line - MARGIN)) & (self.nonzero_x < (y_fitted_line + MARGIN))
 
-    def _get_y_fitted_line(self):
-        a, b, c = self.fit_parameters
+    def _get_y_fitted_line(self, fit_parameters: Tuple[float, float, float]) -> np.ndarray:
+        a, b, c = fit_parameters
         return a * (self.nonzero_y ** 2) + b * self.nonzero_y + c
 
     def _apply_sliding_window_search(self) -> List:
@@ -69,3 +106,9 @@ class LaneFinder:
     def _set_nonzero(self) -> Tuple[np.ndarray, np.ndarray]:
         frame_nonzero = self.frame.nonzero()
         return frame_nonzero[0], frame_nonzero[1]
+
+    def _ensure_memory_time_span(self) -> None:
+        variables_with_memory = [self.lanes[LEFT], self.lanes[RIGHT]]
+        for variable in variables_with_memory:
+            if len(variable) > MEMORY_TIME_SPAN:
+                variable.pop(0)

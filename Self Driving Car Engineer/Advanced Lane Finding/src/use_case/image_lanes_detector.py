@@ -7,7 +7,9 @@ from matplotlib import image as mpimg
 from src.domain.frame_binarizer import FrameBinarizer
 from src.domain.frame_layers_recorder import FrameLayersRecorder
 from src.domain.frame_transformer import FrameTransformer
+from src.domain.lane_finder import LaneFinder
 from src.domain.logger import get_logger
+from src.infrastructure.parameters import LEFT, RIGHT
 from src.use_case.lanes_detector import LanesDetector
 
 
@@ -15,8 +17,9 @@ class ImageLanesDetector(LanesDetector):
     def __init__(self,
                  frame_transformer: FrameTransformer,
                  frame_binarizer: FrameBinarizer,
+                 lane_finder: LaneFinder,
                  frame_layers_recorder: FrameLayersRecorder) -> None:
-        super().__init__(frame_transformer, frame_binarizer, frame_layers_recorder)
+        super().__init__(frame_transformer, frame_binarizer, lane_finder, frame_layers_recorder)
         self.images = []
         self.output_directory = None
 
@@ -39,10 +42,8 @@ class ImageLanesDetector(LanesDetector):
             self._save_final_image(final_image, image_name)
 
     def _reset_state(self) -> None:
-        self.left_parameters = None
-        self.right_parameters = None
-        self.left_lane = []
-        self.right_lane = []
+        self.fit_parameters = {LEFT: (), RIGHT: ()}
+        self.lane_finder.lanes = {LEFT: [], RIGHT: []}
 
     def _load_images(self, calibration_directory: str, images_directory: str):
         for image_name in os.listdir(images_directory):
