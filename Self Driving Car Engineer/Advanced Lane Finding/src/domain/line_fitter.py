@@ -16,13 +16,10 @@ class LineFitter:
 
     def fit_second_order_polynomial(self, frame: np.ndarray, lanes: Dict[str, List[Lane]]) -> None:
         self._ensure_memory_time_span()
-
         self.polynomial[Y] = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
         y_eval = np.max(self.polynomial[Y])
-
         self._get_left_polynomial(lanes)
         self._get_right_polynomial(frame, lanes)
-
         self._get_left_curvature(y_eval)
         self._get_right_curvature(y_eval)
 
@@ -37,15 +34,16 @@ class LineFitter:
         self.polynomial[RIGHT][X] = np.array([int(x) for x in right_polynomial_x if x <= frame.shape[1]])
 
     def _get_left_curvature(self, y_eval: int) -> None:
-        left_fit_cr = np.polyfit(self.polynomial[Y] * Y_TO_METERS_PER_PIXEL,
-                                 self.polynomial[LEFT][X] * X_TO_METERS_PER_PIXEL, 2)
-        self.curvature[LEFT].append(self._get_curvature(left_fit_cr, y_eval))
+        y_in_meters = self.polynomial[Y] * Y_TO_METERS_PER_PIXEL
+        x_in_meters = self.polynomial[LEFT][X] * X_TO_METERS_PER_PIXEL
+        left_fit_curvature = np.polyfit(y_in_meters, x_in_meters, 2)
+        self.curvature[LEFT].append(self._get_curvature(left_fit_curvature, y_eval))
 
     def _get_right_curvature(self, y_eval: int) -> None:
         y_in_meters = self.polynomial[Y] * Y_TO_METERS_PER_PIXEL
         x_in_meters = self.polynomial[RIGHT][X] * X_TO_METERS_PER_PIXEL
-        right_fit_cr = np.polyfit(y_in_meters, x_in_meters, 2)
-        self.curvature[RIGHT].append(self._get_curvature(right_fit_cr, y_eval))
+        right_fit_curvature = np.polyfit(y_in_meters, x_in_meters, 2)
+        self.curvature[RIGHT].append(self._get_curvature(right_fit_curvature, y_eval))
 
     @staticmethod
     def _get_polynomial_fit_parameters(lanes: List[Lane]) -> Tuple:
@@ -66,7 +64,6 @@ class LineFitter:
         return curvature
 
     def _ensure_memory_time_span(self) -> None:
-        variables_with_memory = [self.curvature[LEFT], self.curvature[RIGHT]]
-        for variable in variables_with_memory:
+        for variable in [self.curvature[LEFT], self.curvature[RIGHT]]:
             if len(variable) > MEMORY_TIME_SPAN:
                 variable.pop(0)

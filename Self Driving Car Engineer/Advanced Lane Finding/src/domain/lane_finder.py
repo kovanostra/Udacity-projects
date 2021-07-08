@@ -110,8 +110,7 @@ class LaneFinder:
         return frame_nonzero[0], frame_nonzero[1]
 
     def _ensure_memory_time_span(self) -> None:
-        variables_with_memory = [self.lanes[LEFT], self.lanes[RIGHT], self.distance_from_centre]
-        for variable in variables_with_memory:
+        for variable in [self.lanes[LEFT], self.lanes[RIGHT], self.distance_from_centre]:
             if len(variable) > MEMORY_TIME_SPAN:
                 variable.pop(0)
 
