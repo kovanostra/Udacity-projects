@@ -8,8 +8,8 @@ from src.infrastructure.parameters import NUMBER_OF_WINDOWS, MARGIN, MIN_PIXELS
 
 
 class LaneFinder:
-    def __init__(self, image: np.ndarray, base: np.ndarray, fit_parameters: np.ndarray) -> None:
-        self.image = image
+    def __init__(self, frame: np.ndarray, base: np.ndarray, fit_parameters: np.ndarray) -> None:
+        self.frame = frame
         self.base = base
         self.fit_parameters = fit_parameters
         self.current = self.base
@@ -44,9 +44,9 @@ class LaneFinder:
             all_lane_indices.append(good_indices)
         return all_lane_indices
 
-    def _recenter_next_window(self, current_window: Window, image_window: np.ndarray) -> None:
-        if np.nonzero(image_window)[0].shape[0] > MIN_PIXELS:
-            self.current = current_window.x_low + int(np.average(np.nonzero(image_window)[1]))
+    def _recenter_next_window(self, current_window: Window, frame_window: np.ndarray) -> None:
+        if np.nonzero(frame_window)[0].shape[0] > MIN_PIXELS:
+            self.current = current_window.x_low + int(np.average(np.nonzero(frame_window)[1]))
 
     def _get_nonzero_indices_within_the_current_window(self, current_window: Window) -> Tuple:
         return (self._get_nonzero_indices_in_y_dimension(current_window) &
@@ -60,12 +60,12 @@ class LaneFinder:
 
     def _get_current_window(self, margin: int, window_number: int) -> Window:
         current_window = Window(margin, window_number, self.window_height)
-        current_window.set_dimensions(self.image, self.current)
+        current_window.set_dimensions(self.frame, self.current)
         return current_window
 
     def _set_window_height(self) -> int:
-        return np.int(self.image.shape[0] // NUMBER_OF_WINDOWS)
+        return np.int(self.frame.shape[0] // NUMBER_OF_WINDOWS)
 
     def _set_nonzero(self) -> Tuple[np.ndarray, np.ndarray]:
-        image_nonzero = self.image.nonzero()
-        return image_nonzero[0], image_nonzero[1]
+        frame_nonzero = self.frame.nonzero()
+        return frame_nonzero[0], frame_nonzero[1]

@@ -4,14 +4,19 @@ import cv2
 import numpy as np
 from matplotlib import image as mpimg
 
+from src.domain.frame_binarizer import FrameBinarizer
+from src.domain.frame_layers_recorder import FrameLayersRecorder
+from src.domain.frame_transformer import FrameTransformer
 from src.domain.logger import get_logger
-from src.infrastructure.parameters import SOURCE_POINTS, DESTINATION_X_MAX_PERCENTAGE, DESTINATION_X_MIN_PERCENTAGE
 from src.use_case.lanes_detector import LanesDetector
 
 
 class ImageLanesDetector(LanesDetector):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self,
+                 frame_transformer: FrameTransformer,
+                 frame_binarizer: FrameBinarizer,
+                 frame_layers_recorder: FrameLayersRecorder) -> None:
+        super().__init__(frame_transformer, frame_binarizer, frame_layers_recorder)
         self.images = []
         self.output_directory = None
 
@@ -23,8 +28,8 @@ class ImageLanesDetector(LanesDetector):
         self.record_all_layers = record_all_layers
         self.output_directory = output_directory
         self._load_images(calibration_directory, images_directory)
-        self._calibrate_camera()
-        self._get_perspective_transform()
+        self.frame_transformer.calibrate_camera(self.calibration_frames)
+        self.frame_transformer.get_perspective_transform_parameters(self.images[0][0])
 
     def start(self) -> None:
         for image, image_name in self.images:
@@ -43,21 +48,8 @@ class ImageLanesDetector(LanesDetector):
         for image_name in os.listdir(images_directory):
             self.images.append([mpimg.imread(os.path.join(images_directory, image_name)), image_name])
         for image_name in os.listdir(calibration_directory):
-            self.calibration_images.append(mpimg.imread(os.path.join(calibration_directory, image_name)))
+            self.calibration_frames.append(mpimg.imread(os.path.join(calibration_directory, image_name)))
         get_logger().info("Loaded images from ./{}".format(images_directory))
-
-    def _get_perspective_transform(self):
-        source_points = np.float32(SOURCE_POINTS)
-        image_height, image_width, _ = self.images[0][0].shape
-        x_min_pixel = int(image_width * DESTINATION_X_MIN_PERCENTAGE)
-        x_max_pixel = int(image_width * DESTINATION_X_MAX_PERCENTAGE)
-        destination_points = np.float32([[x_min_pixel, 0],
-                                         [x_min_pixel, image_height],
-                                         [x_max_pixel, 0],
-                                         [x_max_pixel, image_height]])
-        self.transform_matrix = cv2.getPerspectiveTransform(source_points, destination_points)
-        self.transform_matrix_inverse = cv2.getPerspectiveTransform(destination_points, source_points)
-        get_logger().info("Calculated the perspective transform matrices")
 
     def _save_final_image(self, image: np.ndarray, image_name: str) -> None:
         output_path = os.path.join(self.output_directory, image_name)
