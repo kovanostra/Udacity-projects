@@ -57,7 +57,8 @@ class LanesDetector(metaclass=ABCMeta):
         self.frame[LANES] = self._find_road_lanes(self.frame[TRANSFORMED])
         self._inverse_perspective_transform()
         self._finalize_frame()
-        # plt.imsave("output_images/undistorted_image.jpg", self.frame[UNDISTORTED])
+        # test = (self.frame[TRANSFORMED] + self.frame[LANES][:, :, 1]) // 2
+        # plt.imsave("output_images/detected_lanes.jpg", test)
         return self.frame[FINAL]
 
     def _find_road_lanes(self, frame: np.ndarray) -> np.ndarray:

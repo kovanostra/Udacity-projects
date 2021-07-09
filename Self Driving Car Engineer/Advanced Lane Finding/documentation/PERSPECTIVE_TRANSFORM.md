@@ -2,26 +2,27 @@
 
 ## 1. Description
 
-The perspective transform operation is used to transform an image taken from one angle
-to an image taken from a different angle. Here, I am interested to transform an image 
-taken from the front of the car to a birds-eyes-view image. 
+The perspective transform operation is used to transform an image taken from one angle to an image taken from a
+different angle. Here, I am interested to transform an image taken from the front of the car to a birds-eyes-view image.
 
 ## 2. Example images
 
 #### Image without perspective transform
+
 ![No perspective transform](../output_images/no_perspective_transform.jpg)
 
 #### Image with perspective transform
+
 ![No perspective transform](../output_images/perspective_transform.jpg)
 
 ## 3. Code
 
-The [FrameTransformer](../src/domain/frame_transformer.py) class is responsible for the perspective transform through 
-its get_perspective_transform_parameters(), apply_perspective_transform(), and apply_inverse_perspective_transform() 
+The [FrameTransformer](../src/domain/frame_transformer.py) class is responsible for the perspective transform through
+its get_perspective_transform_parameters(), apply_perspective_transform(), and apply_inverse_perspective_transform()
 methods. To obtain the transform matrices I am using 4 source points and 4 destination points (manually chosen) and then
 I apply the openCV getPerspectiveTransform function. The source points define the area in the original image that I want
-to transform. The destination points define the target view of the source points after the transformation. 
-Finally, to transform and un-transform the images I apply the openCV warping functions using the appropriate transform matrix.
+to transform. The destination points define the target view of the source points after the transformation. Finally, to
+transform and un-transform the images I apply the openCV warping functions using the appropriate transform matrix.
 
 #### The get_perspective_transform_parameters method
 

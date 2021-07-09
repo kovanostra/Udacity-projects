@@ -42,7 +42,7 @@ class LaneFinder:
         current_lane = self._search_lane_points(histogram_search=histogram_search, fit_parameters=fit_parameters)
         if any(current_lane.x > self.histogram_midpoint):
             current_lane = self._search_lane_points(histogram_search=True, fit_parameters=fit_parameters)
-            self.lanes[LEFT] = self.lanes[LEFT][-FORGET_FRAMES:-1]
+            self.lanes[LEFT] = self.lanes[LEFT][-KEEP_LAST_FRAMES:-1]
         if not any(current_lane.x > self.histogram_midpoint):
             self.lanes[LEFT].append(current_lane)
 
@@ -55,7 +55,7 @@ class LaneFinder:
         current_lane = self._search_lane_points(histogram_search=histogram_search, fit_parameters=fit_parameters)
         if any(current_lane.x < self.histogram_midpoint):
             current_lane = self._search_lane_points(histogram_search=True, fit_parameters=fit_parameters)
-            self.lanes[RIGHT] = self.lanes[RIGHT][-FORGET_FRAMES:-1]
+            self.lanes[RIGHT] = self.lanes[RIGHT][-KEEP_LAST_FRAMES:-1]
         if not any(current_lane.x < self.histogram_midpoint):
             self.lanes[RIGHT].append(current_lane)
 
@@ -82,10 +82,6 @@ class LaneFinder:
             good_indices = self._get_nonzero_indices_within_the_current_window(current_window)
             all_lane_indices.append(good_indices)
         return all_lane_indices
-
-    def _recenter_next_window(self, current_window: Window, frame_window: np.ndarray) -> None:
-        if np.nonzero(frame_window)[0].shape[0] > MIN_PIXELS:
-            self.current = current_window.x_low + int(np.average(np.nonzero(frame_window)[1]))
 
     def _get_nonzero_indices_within_the_current_window(self, current_window: Window) -> Tuple:
         return (self._get_nonzero_indices_in_y_dimension(current_window) &

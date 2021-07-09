@@ -1,4 +1,5 @@
 # Advanced Lane Finding
+
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 ![Lanes Image](output_images/test1.jpg)
 
@@ -43,9 +44,9 @@ The repo has been tested to work with the following dependencies:
 To start the lane detection pipeline first set up the python path
 
     PYTHONPATH=/path/to/the/repo
-    
+
 For detection on separate images run:
-    
+
     python src/cli.py detect-images 
     --images_directory /path/to/images/directory/ 
     --calibration_directory /path/to/calibration/images/directory/ 
@@ -95,10 +96,9 @@ The repository contains 2 use cases:
 1. ImageLanesDetector (responsible for detection on images)
 1. VideoLanesDetector (responsible for detection on a video file)
 
-Both are subclasses of the LanesDetector abstract class inside which the pipeline 
-structure is defined. Each use case is first built and then ran. During the build phase
-we use the FrameTransformer class to calibrate the camera and then to obtain the perspective transform
-matrix (and its inverse).
+Both are subclasses of the LanesDetector abstract class inside which the pipeline structure is defined. Each use case is
+first built and then ran. During the build phase we use the FrameTransformer class to calibrate the camera and then to
+obtain the perspective transform matrix (and its inverse).
 
 The pipeline as defined in the _apply_pipeline() method of the LanesDetector class, contains the following steps:
 
@@ -126,7 +126,6 @@ For a more detailed explanation of the pipeline steps please refer to the follow
 #### Frame with all layers drawn
 
 ![Lanes Image](output_images/all_layers.jpg)
-
 
 #### Image results
 

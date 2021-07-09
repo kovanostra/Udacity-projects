@@ -2,15 +2,14 @@
 
 ## 1. Description
 
-In this step I am adding the detected lanes to the undistorted image and then saving it. 
-If the record_all_layers option is True, then instead of saving only the final image I am saving an image with all the 
-pipeline layers. 
+In this step I am adding the detected lanes to the undistorted image and then saving it. If the record_all_layers option
+is True, then instead of saving only the final image I am saving an image with all the pipeline layers.
 
 ## 2. Example images
 
 #### Final image
-![Final image](../output_images/final_image.jpg)
 
+![Final image](../output_images/final_image.jpg)
 
 ### Final image with all layers
 
@@ -18,10 +17,10 @@ pipeline layers.
 
 ## 3. Code
 
-The [LanesDetector](../src/use_case/lanes_detector.py) and [FrameLayersRecorder](../src/domain/frame_layers_recorder.py) 
+The [LanesDetector](../src/use_case/lanes_detector.py) and [FrameLayersRecorder](../src/domain/frame_layers_recorder.py)
 classes are responsible for creating the final image. The LanesDetector class uses the _finalize_frame()
-method to create the final image. The FrameLayersRecorder uses the record_all_layers() method to save all pipeline layers in the
-output image.
+method to create the final image. The FrameLayersRecorder uses the record_all_layers() method to save all pipeline
+layers in the output image.
 
 #### The _finalize_frame method
 
@@ -33,7 +32,7 @@ output image.
     def _add_lanes_to_undistorted_frame(self) -> np.ndarray:
         return (self.frame[UNDISTORTED] + self.frame[LANES_REVERTED].astype(int)) // 2
 
-#### The record_all_layers method 
+#### The record_all_layers method
 
     @staticmethod
     def record_all_layers(frames: Dict[str, np.ndarray]) -> np.ndarray:

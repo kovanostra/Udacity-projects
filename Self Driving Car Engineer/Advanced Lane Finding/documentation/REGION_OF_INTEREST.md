@@ -2,22 +2,24 @@
 
 ## 1. Description
 
-The isolation of a region of interest from a frame helps the lanes' detector
-to focus on calculating coordinates only in the area we are expecting to find road lanes.
+The isolation of a region of interest from a frame helps the lanes' detector to focus on calculating coordinates only in
+the area we are expecting to find road lanes.
 
 ## 2. Example images
 
 #### Before ROI isolation
+
 ![No ROI](../output_images/no_roi.jpg)
 
 #### After ROI isolation
+
 ![No ROI](../output_images/roi.jpg)
 
 ## 3. Code
 
-The [FrameTransformer](../src/domain/frame_transformer.py) class is responsible for isolating
-a region of interest through its isolate_region_of_interest() method. More specifically, we apply
-a mask on the image outside the ROI. The polygon defining the ROI was manually defined.
+The [FrameTransformer](../src/domain/frame_transformer.py) class is responsible for isolating a region of interest
+through its isolate_region_of_interest() method. More specifically, we apply a mask on the image outside the ROI. The
+polygon defining the ROI was manually defined.
 
     def isolate_region_of_interest(self, frame: np.ndarray) -> np.ndarray:
         mask = np.zeros_like(frame)

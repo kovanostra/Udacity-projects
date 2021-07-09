@@ -2,12 +2,11 @@
 
 ## 1. Description
 
-The process of image Binarization helps in focusing only of the specific pixels which
-are more likely to contain the information we need. Here, it is performed in two steps; 
-the calculation of the image gradients, and the isolation of the desired gradient values.
-Detecting the image gradients is a process that helps in capturing the pixels in which there
-are sudden changes in the image pixels, thus capturing the shape of objects or markings on the road;
-such as cars and road lanes.
+The process of image Binarization helps in focusing only of the specific pixels which are more likely to contain the
+information we need. Here, it is performed in two steps; the calculation of the image gradients, and the isolation of
+the desired gradient values. Detecting the image gradients is a process that helps in capturing the pixels in which
+there are sudden changes in the image pixels, thus capturing the shape of objects or markings on the road; such as cars
+and road lanes.
 
 ## 2. Example images
 
@@ -19,7 +18,6 @@ such as cars and road lanes.
 
 ![Binarized image](../output_images/binarized_image.jpg)
 
-
 ## 3. Code
 
 The [FrameBinarizer](../src/domain/frame_binarizer.py) class is responsible to detect the gradients and binarize the
@@ -27,11 +25,11 @@ image through its binarize() method.
 
 #### The binarize method
 
-The binarize method is applying an HLS transform to the image and then selects the s channel which
-captures better the road lanes in our case. Then it applies a convolution with a Sobel kernel to the image
-in order to get the image gradients. Then it scales the image gradients to be between 0 and 255. 
-Finally, it binarizes the image by isolating two different ranges of gradients; the first for values from 10 to 100, 
-and the second for values from 200 to 250. The value ranges were empirically selected.
+The binarize method is applying an HLS transform to the image and then selects the s channel which captures better the
+road lanes in our case. Then it applies a convolution with a Sobel kernel to the image in order to get the image
+gradients. Then it scales the image gradients to be between 0 and 255. Finally, it binarizes the image by isolating two
+different ranges of gradients; the first for values from 10 to 100, and the second for values from 200 to 250. The value
+ranges were empirically selected.
 
     def binarize(self, frame: np.ndarray) -> np.ndarray:
         s_channel = self._to_hls(frame)[:, :, 2]
