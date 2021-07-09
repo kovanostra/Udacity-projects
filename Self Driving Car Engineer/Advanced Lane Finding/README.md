@@ -146,9 +146,9 @@ For a more detailed explanation of the pipeline steps please refer to the follow
 
 #### Video results
 
-https://github.com/kovanostra/Udacity-projects/tree/advanced-lane-finding/Self%20Driving%20Car%20Engineer/Advanced%20Lane%20Finding/output_video/project_video.mp4
+[Project video](https://github.com/kovanostra/Udacity-projects/tree/advanced-lane-finding/Self%20Driving%20Car%20Engineer/Advanced%20Lane%20Finding/output_video/project_video.mp4)
 
-https://github.com/kovanostra/Udacity-projects/tree/advanced-lane-finding/Self%20Driving%20Car%20Engineer/Advanced%20Lane%20Finding/output_video/challenge_video.mp4
+[Challenge video](https://github.com/kovanostra/Udacity-projects/tree/advanced-lane-finding/Self%20Driving%20Car%20Engineer/Advanced%20Lane%20Finding/output_video/challenge_video.mp4)
 
 ## 7. Discussion
 
