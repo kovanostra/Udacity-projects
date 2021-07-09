@@ -4,7 +4,7 @@
 
 In this step I am adding the detected lanes to the undistorted image and then saving it. 
 If the record_all_layers option is True, then instead of saving only the final image I am saving an image with all the 
-pipeline layers.
+pipeline layers. 
 
 ## 2. Example images
 
