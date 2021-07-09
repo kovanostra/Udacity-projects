@@ -98,8 +98,7 @@ structure is defined. Each use case is first built and then ran. During the buil
 we use the FrameTransformer class to calibrate the camera and then to obtain the perspective transform
 matrix (and its inverse).
 
-The pipeline as defined in the _apply_pipeline() method contains the 
-following steps:
+The pipeline as defined in the _apply_pipeline() method of the LanesDetector class, contains the following steps:
 
 1. Undistort the frame
 1. Binarize the frame
@@ -109,3 +108,19 @@ following steps:
 1. Apply the inverse perspective transform
 1. Join lanes and text with the undistorted frame
 
+## 5. Pipeline steps explanation
+
+For a more detailed explanation of the pipeline steps please refer to the following documents:
+
+1. [CAMERA_CALIBRATION.md](documentation/CAMERA_CALIBRATION.md)
+1. [PERSPECTIVE_TRANSFORM.md](documentation/PERSPECTIVE_TRANSFORM.md)
+1. [IMAGE_BINARIZATION.md](documentation/IMAGE_BINARIZATION.md)
+1. [REGION_OF_INTEREST.md](documentation/REGION_OF_INTEREST.md)
+1. [LANES_DETECTION.md](documentation/LANES_DETECTION.md)
+1. [FINALIZE_FRAME.md](documentation/FINALIZE_FRAME.md)
+
+## 6. Results
+
+For the results please look 
+
+[sa](project_video.mp4)
