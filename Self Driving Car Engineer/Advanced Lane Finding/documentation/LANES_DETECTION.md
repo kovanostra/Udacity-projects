@@ -127,3 +127,84 @@ we keep the last N lanes as defined in the `KEEP_LAST_FRAMES` parameter. Both pa
    
       def _get_nonzero_indices_in_x_dimension(self, current_window: Window) -> List[bool]:
           return (self.nonzero_x >= current_window.x_low) & (self.nonzero_x < current_window.x_high)
+
+#### The LaneFitter class
+
+The LaneFitter class uses the fit_second_order_polynomial() method to fit a second order polynomial
+to the X&Y lane coordinates detected (for the last N number of frames). Then it calculates the lanes' curvature.
+Please find below a code summary with some comments.
+
+      def fit_second_order_polynomial(self, frame: np.ndarray, lanes: Dict[str, List[Lane]]) -> None:
+        # Ensures we forget the oldest left and right curvature values calculated.
+        self._ensure_memory_time_span()
+        self.polynomial[Y] = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
+        y_eval = np.max(self.polynomial[Y])
+        self._get_left_polynomial(lanes)
+        self._get_right_polynomial(frame, lanes)
+        self._get_left_curvature(y_eval)
+        self._get_right_curvature(y_eval)
+
+      def _get_left_polynomial(self, lanes: Dict[str, List[Lane]]) -> None:
+        # A np.polyfit of all the X&Y values over the last frames
+        self.fit_parameters[LEFT] = self._get_polynomial_fit_parameters(lanes[LEFT])
+        
+        # Calculate the X coordinates using the x=ay^2+by+c equation
+        left_polynomial_x = self._get_polynomial_x_coordinates(self.fit_parameters[LEFT], self.polynomial[Y])
+        
+        # Filter points with negative values
+        self.polynomial[LEFT][X] = np.array([int(x) for x in left_polynomial_x if x > 0])
+
+      def _get_left_curvature(self, y_eval: int) -> None:
+        # Transform the X&Y pixel values into meters
+        y_in_meters = self.polynomial[Y] * Y_TO_METERS_PER_PIXEL
+        x_in_meters = self.polynomial[LEFT][X] * X_TO_METERS_PER_PIXEL
+        
+        # Repeat the polyfit with the values in meters
+        left_fit_curvature = np.polyfit(y_in_meters, x_in_meters, 2)
+
+        # Calculate the curvature using the x=((1 + (2ay + b)^2)^(3/2)) / |2a| equation
+        self.curvature[LEFT].append(self._get_curvature(left_fit_curvature, y_eval))
+
+      @staticmethod
+    def _get_polynomial_fit_parameters(lanes: List[Lane]) -> Tuple:
+        x = np.concatenate([lane.x for lane in lanes])
+        y = np.concatenate([lane.y for lane in lanes])
+        return np.polyfit(y, x, deg=2)
+
+    @staticmethod
+    def _get_polynomial_x_coordinates(parameters: tuple, y: np.ndarray) -> np.ndarray:
+        a, b, c = parameters
+        x = (a * y ** 2) + (b * y) + c
+        return x
+
+    @staticmethod
+    def _get_curvature(fit_curvature: Tuple, y: float) -> np.ndarray:
+        a, b, _ = fit_curvature
+        curvature = ((1 + (2 * a * y * Y_TO_METERS_PER_PIXEL + b) ** 2) ** (3 / 2)) / abs(2 * a)
+        return curvature
+
+#### The FrameVisualizer class
+
+The FrameVisualizer class is responsible for collecting the X&Y coordinates of the last N number of polynomials
+detected, sort them, and plot their polygon using the draw_lanes() method. It also uses the add_text_to_frame()
+method to add all necessary text to a frame.
+
+    @staticmethod
+    def draw_lanes(frame: np.ndarray, polynomial: np.ndarray) -> np.ndarray:
+        output_frame = np.zeros(shape=(frame.shape[0], frame.shape[1], 3))
+        left_y = np.linspace(0, len(polynomial[LEFT][X]) - 1, len(polynomial[LEFT][X])).astype(int)
+        right_y = np.linspace(0, len(polynomial[RIGHT][X]) - 1, len(polynomial[RIGHT][X])).astype(int)
+        lane_area_points = list(zip(polynomial[LEFT][X], left_y)) + list(zip(polynomial[RIGHT][X], right_y))
+        lane_area_points_sorted = np.array(sorted(lane_area_points, key=lambda x: x[1]),
+                                           dtype=np.int32).reshape((-1, 1, 2))
+        cv2.fillPoly(output_frame, [lane_area_points_sorted], GREEN)
+        return output_frame
+
+    @staticmethod
+    def add_text_to_frame(frame: np.ndarray, curvature: List[float], distance_from_centre: List[float]) -> None:
+        cv2.putText(frame, "Radius of left curvature {}m".format(round(np.average(curvature[LEFT]))), (10, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
+        cv2.putText(frame, "Radius of right curvature {}m".format(round(np.average(curvature[RIGHT]))), (10, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
+        cv2.putText(frame, "Distance from centre {}m".format(round(np.average(distance_from_centre), 2)), (10, 140),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 3)
