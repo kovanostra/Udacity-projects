@@ -147,11 +147,11 @@ For a more detailed explanation of the pipeline steps please refer to the follow
 #### Video results
 
 <video width="320" height="240" controls>
-  <source src="./project_video.mp4" type="video/mp4">
+  <source src="/output_video/project_video.mp4" type="video/mp4">
 </video>
 
 <video width="320" height="240" controls>
-  <source src="./challenge_video.mp4" type="video/mp4">
+  <source src="/output_video/challenge_video.mp4" type="video/mp4">
 </video>
 
 ## 7. Discussion
