@@ -125,7 +125,7 @@ For a more detailed explanation of the pipeline steps please refer to the follow
 
 #### Frame with all layers drawn
 
-![Lanes Image](output_images/test1_all_layers.jpg)
+![Lanes Image](output_images/all_layers.jpg)
 
 
 #### Image results
