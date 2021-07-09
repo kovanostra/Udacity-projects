@@ -154,6 +154,18 @@ Please download the videos from the locations below:
 
 ## 7. Discussion
 
-#### Limitations
+Even though the code on this repo performs reasonably well in most cases tested, there are some limitations to it.
 
-#### Conclusions
+First, the detection time per frame is in the order of 200 ms (plus/minus 50), which makes it not very convenient for
+real production. To mitigate that we could implement some optimization steps , such as remove all the drawing parts and
+possibly write transfer some or all the code into C++.
+
+Another issue is that sometimes the threshold range selected during image binarization might need to be changed
+dynamically based on the lighting conditions and the contrast between the lanes and the road. This can be either due to
+shadows or parts of the road being gray.
+
+Moreover, a strong assumption is that there should always be two lanes visible in the road, and they should be one on
+the left side of the image and one on the right. In cases where there turns of high curvature the code will not work.
+
+Finally, an important issue arises when objects appear suddenly on top of the lane. In such cases there should be a
+complementary object-detection algorithm, able to mask the area of the obstructing objects from the image.
