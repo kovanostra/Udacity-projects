@@ -1,6 +1,6 @@
 # Advanced Lane Finding
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
-![Lanes Image](./output_images/test1.jpg)
+![Lanes Image](output_images/test1.jpg)
 
 ## 1.Introduction
 
@@ -121,19 +121,34 @@ For a more detailed explanation of the pipeline steps please refer to the follow
 
 ## 6. Results
 
+#### Frame with all layers drawn
+
+![Lanes Image](output_images/test1_all_layers.jpg)
+
+
 #### Image results
 
 <table><tr>
 <td> <img src="output_images/test1.jpg" alt="Drawing" style="width: 250px;"/> </td>
 <td> <img src="output_images/test2.jpg" alt="Drawing" style="width: 250px;"/> </td>
+<td> <img src="output_images/test3.jpg" alt="Drawing" style="width: 250px;"/> </td>
+</tr></table>
+<table><tr>
+<td> <img src="output_images/test4.jpg" alt="Drawing" style="width: 250px;"/> </td>
+<td> <img src="output_images/test5.jpg" alt="Drawing" style="width: 250px;"/> </td>
+<td> <img src="output_images/test6.jpg" alt="Drawing" style="width: 250px;"/> </td>
+</tr></table>
+<table><tr>
+<td> <img src="output_images/straight_lines1.jpg" alt="Drawing" style="width: 250px;"/> </td>
+<td> <img src="output_images/straight_lines2.jpg" alt="Drawing" style="width: 250px;"/> </td>
 </tr></table>
 
 #### Video results
 
 <video width="320" height="240" controls>
-  <source src="project_video.mp4" type="video/mp4">
+  <source src="./project_video.mp4" type="video/mp4">
 </video>
 
 <video width="320" height="240" controls>
-  <source src="challenge_video.mp4" type="video/mp4">
+  <source src="./challenge_video.mp4" type="video/mp4">
 </video>
