@@ -121,6 +121,19 @@ For a more detailed explanation of the pipeline steps please refer to the follow
 
 ## 6. Results
 
-For the results please look 
+#### Image results
 
-[sa](project_video.mp4)
+<table><tr>
+<td> <img src="output_images/test1.jpg" alt="Drawing" style="width: 250px;"/> </td>
+<td> <img src="output_images/test2.jpg" alt="Drawing" style="width: 250px;"/> </td>
+</tr></table>
+
+#### Video results
+
+<video width="320" height="240" controls>
+  <source src="project_video.mp4" type="video/mp4">
+</video>
+
+<video width="320" height="240" controls>
+  <source src="challenge_video.mp4" type="video/mp4">
+</video>
