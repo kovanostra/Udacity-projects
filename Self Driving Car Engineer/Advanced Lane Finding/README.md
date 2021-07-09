@@ -77,6 +77,8 @@ The option record_all_layers will output frames with 3X2 subplots containing:
 1. The detected polygon on the inverse perspective transform
 1. The final frame with the road lanes, the curvature, and the distance from centre
 
+Using this option on videos is a lot slower than just running the pipeline.
+
 ## 4. Code structure
 
     src/
@@ -152,3 +154,9 @@ For a more detailed explanation of the pipeline steps please refer to the follow
 <video width="320" height="240" controls>
   <source src="./challenge_video.mp4" type="video/mp4">
 </video>
+
+## 7. Discussion
+
+#### Limitations
+
+#### Conclusions

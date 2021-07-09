@@ -50,6 +50,18 @@ class FrameTransformer:
         frame_transformed = cv2.warpPerspective(frame, self.transform_matrix_inverse, frame_size)
         return frame_transformed
 
+    def isolate_region_of_interest(self, frame: np.ndarray) -> np.ndarray:
+        mask = np.zeros_like(frame)
+        vertices = self._get_vertices(frame)
+        if len(frame.shape) > 2:
+            channel_count = frame.shape[2]
+            ignore_mask_color = (255,) * channel_count
+        else:
+            ignore_mask_color = 255
+        cv2.fillPoly(mask, vertices, ignore_mask_color)
+        masked_frame = cv2.bitwise_and(frame, mask)
+        return masked_frame
+
     def _detect_chessboard_corners(self, calibration_frames: List[np.ndarray]) -> None:
         all_object_points = np.zeros(shape=(NY * NX, 3), dtype=np.float32)
         all_object_points[:, :2] = np.mgrid[0:NX, 0:NY].T.reshape(-1, 2)
@@ -73,18 +85,6 @@ class FrameTransformer:
             get_logger().error("Couldn't detect correctly the chessboard corners. "
                                "Impossible to calculate calibration parameters.")
             raise RuntimeError
-
-    def isolate_region_of_interest(self, frame: np.ndarray) -> np.ndarray:
-        mask = np.zeros_like(frame)
-        vertices = self._get_vertices(frame)
-        if len(frame.shape) > 2:
-            channel_count = frame.shape[2]
-            ignore_mask_color = (255,) * channel_count
-        else:
-            ignore_mask_color = 255
-        cv2.fillPoly(mask, vertices, ignore_mask_color)
-        masked_frame = cv2.bitwise_and(frame, mask)
-        return masked_frame
 
     @staticmethod
     def _get_vertices(frame: np.ndarray) -> np.ndarray:
