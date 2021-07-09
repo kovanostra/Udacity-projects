@@ -38,7 +38,7 @@ The repo has been tested to work with the following dependencies:
 1. numpy==1.19.5
 1. opencv-python==4.5.2.52
 
-#### Entrypoint
+## 3. Entrypoint
 
 To start the lane detection pipeline first set up the python path
 
@@ -67,3 +67,45 @@ For detection on a video run:
 Example:
 
     python src/cli.py detect-video --video_path project_video.mp4 --calibration_directory camera_cal --output_directory output_video --record_all_layers False
+
+The option record_all_layers will output frames with 3X2 subplots containing:
+
+    1. The image gradients
+    1. The image gradients on the region of interest (ROI)
+    1. The image gradients with a perspective transform applied
+    1. The detected lanes polygon
+    1. The detected polygon on the inverse perspective transform
+    1. The final frame with the road lanes, the curvature, and the distance from centre
+
+## 4. Code structure
+
+    src/
+        --domain/
+            ---- Contains all the classes which group a common type of operations inside them
+        --infrastructure/
+            ---- Contains all the project's parameters as constants
+        --use_case/
+            ---- Contains two use cases and the abstract class they inherit from
+        cli.py (The command line interface script)
+
+The repository contains 2 use cases:
+
+    1. ImageLanesDetector (responsible for detection on images)
+    1. VideoLanesDetector (responsible for detection on a video file)
+
+Both are subclasses of the LanesDetector abstract class inside which the pipeline 
+structure is defined. Each use case is first built and then ran. During the build phase
+we use the FrameTransformer class to calibrate the camera and then to obtain the perspective transform
+matrix (and its inverse).
+
+The pipeline as defined in the _apply_pipeline() method contains the 
+following steps:
+
+    1. Undistort the frame
+    1. Binarize the frame
+    1. Isolate the region of interest
+    1. Apply the perspective transform
+    1. Detect the road lanes
+    1. Apply the inverse perspective transform
+    1. Join lanes and text with the undistorted frame
+
