@@ -77,7 +77,7 @@ two and two proved to be enough. It was very important to add the four dropout a
 model overfit. Finally, the LeakyReLU activation and the layer-normalization proved to be crucial for allowing
 the gradients to propagate smoother, and the classifier to learn efficiently.
 
-The full architecture of the model used can be seen below:
+The full architecture of the model used can be seen below (visualized using [Netron](https://netron.app)):
 
 ![Model](./examples/model_description.png)
 
