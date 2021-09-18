@@ -1,18 +1,15 @@
-import os
-import csv
-import cv2
 import argparse
+import csv
+import os
+from typing import List, Iterable
 
+import cv2
 import numpy as np
-
-from typing import Tuple, List, Iterable
-
-from matplotlib import pyplot as plt
-
 import sklearn
-from sklearn.model_selection import train_test_split
-from keras import layers, models, Model
+from keras import layers, models
 from keras.callbacks import ModelCheckpoint
+from matplotlib import pyplot as plt
+from sklearn.model_selection import train_test_split
 
 
 class CloningModel:
@@ -28,6 +25,7 @@ class CloningModel:
         self.image_shape = None
         self.training_generator = None
         self.validation_generator = None
+        self.test_generator = None
         self.history = None
         self.test_loss = None
 
